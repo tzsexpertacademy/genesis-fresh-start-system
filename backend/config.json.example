@@ -1,0 +1,13 @@
+{
+  "autoReply": {
+    "enabled": false,
+    "message": "This is an automated reply. We will get back to you soon."
+  },
+  "limits": {
+    "maxMessages": 100,
+    "maxMediaSize": 5242880
+  },
+  "blocklist": [],
+  "apiKey": "your-api-key-here",
+  "geminiApiKey": "your-gemini-api-key-here"
+}

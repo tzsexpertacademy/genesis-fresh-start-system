@@ -1,0 +1,222 @@
+  // Handle sending a reply
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!activeContact || !replyMessage.trim()) {
+      return;
+    }
+
+    try {
+      // Set sending state to true to show sending indicator
+      setIsSending(true);
+
+      // Save message to send
+      const messageToSend = replyMessage;
+
+      // Clear input field immediately for better UX
+      setReplyMessage('');
+
+      // Generate a unique ID for the temporary message
+      const tempId = `temp-${Date.now()}`;
+
+      // Add temporary message to chat (optimistic update)
+      const tempMessage: InboxMessage = {
+        id: tempId,
+        sender: 'me',
+        message: messageToSend,
+        timestamp: new Date().toISOString(),
+        read: true
+      };
+
+      // Add to local messages reference to prevent loss during refresh
+      localMessagesRef.current = [...localMessagesRef.current, tempMessage];
+
+      // Update active contact with temporary message immediately
+      if (activeContact) {
+        // Create a deep copy of the active contact to avoid reference issues
+        const updatedMessages = [...activeContact.messages, tempMessage];
+        const updatedContact = {
+          ...activeContact,
+          messages: updatedMessages,
+          lastMessage: tempMessage
+        };
+
+        // Update the active contact state
+        setActiveContact(updatedContact);
+
+        // Update global messages and contacts
+        setMessages(prevMessages => {
+          const newMessages = [...prevMessages, tempMessage];
+          // Recalculate contacts with the new message
+          const updatedContacts = groupMessagesByContact(newMessages);
+          setContacts(updatedContacts);
+          return newMessages;
+        });
+
+        // Scroll to bottom of chat immediately
+        setTimeout(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        }, 10);
+      }
+
+      // Send the message to the server
+      const response = await sendTextMessage(activeContact.phoneNumber, messageToSend);
+
+      if (response && response.status) {
+        console.log('Message sent successfully:', response);
+
+        // Update the temporary message with the real ID
+        if (response.data && response.data.messageId) {
+          // Update local messages reference
+          localMessagesRef.current = localMessagesRef.current.map(msg => 
+            msg.id === tempId 
+              ? { ...msg, id: response.data.messageId } 
+              : msg
+          );
+
+          // Request a refresh of the inbox data via WebSocket
+          websocketService.requestInbox();
+        }
+      } else {
+        console.error('Failed to send message:', response);
+
+        if (response.message && response.message.includes('WhatsApp is not connected')) {
+          setWhatsappStatus('disconnected');
+          setShowQRCode(true);
+        } else {
+          // Remove the temporary message since sending failed
+          if (activeContact) {
+            setActiveContact(prevContact => {
+              if (!prevContact) return null;
+
+              // Filter out the temporary message
+              const filteredMessages = prevContact.messages.filter(msg => msg.id !== tempId);
+              return {
+                ...prevContact,
+                messages: filteredMessages,
+                // Set the last message to the previous one
+                lastMessage: filteredMessages.length > 0
+                  ? filteredMessages[filteredMessages.length - 1]
+                  : prevContact.lastMessage
+              };
+            });
+
+            // Update global messages and contacts
+            setMessages(prevMessages => {
+              const filteredMessages = prevMessages.filter(msg => msg.id !== tempId);
+              const updatedContacts = groupMessagesByContact(filteredMessages);
+              setContacts(updatedContacts);
+              return filteredMessages;
+            });
+
+            // Also update local messages reference
+            localMessagesRef.current = localMessagesRef.current.filter(msg => msg.id !== tempId);
+          }
+
+          alert('Failed to send message. Please try again.');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+
+      if (error.message && error.message.includes('WhatsApp is not connected')) {
+        setWhatsappStatus('disconnected');
+        setShowQRCode(true);
+      } else {
+        alert('Error sending message. Please try again.');
+      }
+    } finally {
+      // Always reset the sending state
+      setIsSending(false);
+    }
+  };
+
+  // Handle selecting a contact
+  const handleContactSelect = (contact: Contact) => {
+    setActiveContact(contact);
+    setViewMode('chat');
+
+    // Focus on reply input after a short delay
+    setTimeout(() => {
+      if (replyInputRef.current) {
+        replyInputRef.current.focus();
+      }
+
+      // Scroll to bottom of chat
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 100);
+  };
+
+  // Handle going back to contacts list
+  const handleBackToContacts = () => {
+    setViewMode('contacts');
+    setActiveContact(null);
+  };
+
+  // Handle quick reply selection
+  const handleQuickReplySelect = (message: string) => {
+    setReplyMessage(message);
+
+    // Focus on reply input
+    if (replyInputRef.current) {
+      replyInputRef.current.focus();
+    }
+  };
+
+  // Handle reconnect button click
+  const handleReconnect = () => {
+    setShowQRCode(true);
+  };
+
+  // Process inbox data from WebSocket
+  const processInboxData = (inboxData: InboxMessage[]) => {
+    if (!inboxData || !Array.isArray(inboxData)) {
+      console.error('Invalid inbox data received:', inboxData);
+      return;
+    }
+
+    // Merge with local messages to prevent losing outgoing messages
+    const mergedMessages = [...inboxData];
+    
+    // Add any local messages that aren't in the inbox data
+    localMessagesRef.current.forEach(localMsg => {
+      if (!inboxData.some(msg => msg.id === localMsg.id)) {
+        mergedMessages.push(localMsg);
+      }
+    });
+
+    // Update messages state
+    setMessages(mergedMessages);
+    
+    // Update last refresh time
+    setLastRefreshTime(new Date().toLocaleTimeString());
+    
+    // Group messages by contact
+    const groupedContacts = groupMessagesByContact(mergedMessages);
+    setContacts(groupedContacts);
+    
+    // If we have an active contact, update it with new messages
+    if (activeContact) {
+      const updatedActiveContact = groupedContacts.find(
+        contact => contact.phoneNumber === activeContact.phoneNumber
+      );
+      
+      if (updatedActiveContact) {
+        setActiveContact(updatedActiveContact);
+        
+        // Scroll to bottom of chat if we have new messages
+        setTimeout(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        }, 10);
+      }
+    }
+    
+    // Clear loading state
+    setLoading(false);
+  };

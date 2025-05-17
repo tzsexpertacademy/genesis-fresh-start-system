@@ -1,0 +1,204 @@
+      {/* Loading state */}
+      {loading && contacts.length === 0 ? (
+        <div className="p-6 flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mb-3"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading messages...</p>
+        </div>
+      ) : contacts.length === 0 && messages.length === 0 ? (
+        <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+          <svg className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+          </svg>
+          <p className="text-sm">No messages in inbox</p>
+          <p className="text-xs mt-1">Messages will appear here when you receive them</p>
+        </div>
+      ) : viewMode === 'contacts' ? (
+        // Contacts List View - Compact design
+        <div className="max-w-full">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {contacts.map((contact) => (
+              <div
+                key={contact.phoneNumber}
+                className="flex items-center py-3 px-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+                onClick={() => handleContactSelect(contact)}
+              >
+                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 mr-3">
+                  {contact.displayName.substring(0, 2).toUpperCase()}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {contact.displayName}
+                    </h3>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+                      {new Date(contact.lastMessage.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {contact.lastMessage.message}
+                    </p>
+
+                    {contact.unreadCount > 0 && (
+                      <div className="ml-2 bg-brand-500 text-white text-xs font-medium rounded-full h-4 min-w-4 flex items-center justify-center px-1 flex-shrink-0">
+                        {contact.unreadCount}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        // Chat View with Active Contact
+        <div className="flex flex-col h-[500px]">
+          {/* Chat Header */}
+          <div className="flex items-center p-3 border-b border-gray-100 dark:border-gray-800">
+            <button
+              onClick={handleBackToContacts}
+              className="mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </button>
+
+            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 mr-2">
+              {activeContact?.displayName.substring(0, 2).toUpperCase()}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                {activeContact?.displayName}
+              </h3>
+            </div>
+          </div>
+
+          {/* Chat Messages */}
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
+            {activeContact && groupMessagesByDate(activeContact.messages).map(group => (
+              <div key={group.date} className="mb-4">
+                {/* Date separator */}
+                <div className="flex justify-center mb-3">
+                  <div className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full">
+                    {formatDate(group.date)}
+                  </div>
+                </div>
+
+                {/* Messages for this date */}
+                <div className="space-y-2">
+                  {group.messages.map((message) => {
+                    // Determine if message is incoming or outgoing
+                    let isIncoming = false;
+
+                    if (message.sender === 'me') {
+                      isIncoming = false;
+                    } else if (message.sender.includes('@s.whatsapp.net')) {
+                      const senderNumber = message.sender.replace('@s.whatsapp.net', '');
+                      isIncoming = senderNumber === activeContact.phoneNumber;
+                    } else {
+                      isIncoming = false;
+                    }
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${isIncoming ? 'justify-start' : 'justify-end'}`}
+                      >
+                        {/* Avatar for incoming messages */}
+                        {isIncoming && (
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 mr-1.5 self-end mb-0.5">
+                            {activeContact.displayName.substring(0, 1).toUpperCase()}
+                          </div>
+                        )}
+
+                        <div
+                          className={`max-w-[75%] rounded-lg px-3 py-1.5 ${
+                            isIncoming
+                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none'
+                              : 'bg-brand-500 text-white rounded-tr-none'
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words text-sm">{message.message}</p>
+                          <p className="text-xs mt-0.5 opacity-70 text-right flex items-center justify-end">
+                            {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+
+                            {/* Check mark for sent messages */}
+                            {!isIncoming && (
+                              <svg className="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                              </svg>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Space on the right for outgoing messages */}
+                        {!isIncoming && <div className="w-6 ml-1.5"></div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Reply Options */}
+          <div className="px-3 pt-2 flex flex-wrap gap-1.5">
+            {quickReplyOptions.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleQuickReplySelect(option)}
+                className="text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full px-2 py-1 transition-colors"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          {/* Reply Form */}
+          <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+            {isSending && (
+              <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-brand-500 mr-1.5"></div>
+                Sending message...
+              </div>
+            )}
+            <form onSubmit={handleSendReply} className="flex items-center">
+              <input
+                type="text"
+                ref={replyInputRef}
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 border border-gray-200 dark:border-gray-700 rounded-l-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 dark:bg-gray-800 dark:text-white"
+                disabled={isSending}
+              />
+              <button
+                type="submit"
+                disabled={!replyMessage.trim() || isSending}
+                className={`rounded-r-md py-2 px-4 ${
+                  replyMessage.trim() && !isSending
+                    ? 'bg-brand-500 hover:bg-brand-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                } transition-colors flex items-center justify-center`}
+              >
+                {isSending ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                  </svg>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </ComponentCard>
+  );
+};
+
+export default memo(EnhancedInboxTable);

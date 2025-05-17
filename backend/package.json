@@ -1,0 +1,32 @@
+{
+  "name": "whatsapp-gateway-backend",
+  "version": "1.0.0",
+  "description": "WhatsApp Gateway Backend using Baileys",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon --config nodemon.json server.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.2.1",
+    "@hapi/boom": "^10.0.1",
+    "baileys": "^6.7.16",
+    "body-parser": "^1.20.2",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "fs-extra": "^11.2.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pino": "^8.16.2",
+    "qrcode": "^1.5.3",
+    "qrcode-terminal": "^0.12.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

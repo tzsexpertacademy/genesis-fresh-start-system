@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+  </head>
+  <body class="dark:bg-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Completely rewritten navigation prevention
+      (function() {
+        // Prevent page reloads during API calls
+        window.addEventListener('beforeunload', function(e) {
+          // Check if we're in the middle of an API call
+          if (sessionStorage.getItem('api_request_in_progress') === 'true' ||
+              sessionStorage.getItem('global_processing') === 'true') {
+            // Cancel the event
+            e.preventDefault();
+            // Chrome requires returnValue to be set
+            e.returnValue = '';
+            return '';
+          }
+        });
+
+        // Prevent form submissions
+        document.addEventListener('submit', function(e) {
+          // Check if we're in the middle of an API call
+          if (sessionStorage.getItem('api_request_in_progress') === 'true') {
+            // Cancel the event
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Form submission prevented during API call');
+            return false;
+          }
+        }, true);
+
+        // Prevent clicks on links during API calls
+        document.addEventListener('click', function(e) {
+          // Check if we're in the middle of an API call
+          if (sessionStorage.getItem('api_request_in_progress') === 'true') {
+            // Check if the click is on a link
+            let target = e.target;
+            while (target) {
+              if (target.tagName === 'A' && target.getAttribute('href')) {
+                // Cancel the event
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Link click prevented during API call');
+                return false;
+              }
+              target = target.parentElement;
+            }
+          }
+        }, true);
+
+        // Clear any stale flags on page load
+        window.addEventListener('load', function() {
+          sessionStorage.removeItem('api_request_in_progress');
+          sessionStorage.removeItem('global_processing');
+
+          // Clear any endpoint-specific flags
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.startsWith('api_request_')) {
+              sessionStorage.removeItem(key);
+            }
+          });
+
+          console.log('Navigation prevention initialized and stale flags cleared');
+        });
+      })();
+    </script>
+  </body>
+</html>
