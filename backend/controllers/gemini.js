@@ -3,7 +3,9 @@ import {
   updateConfig,
   generateResponse,
   processMessage,
-  validateApiKey
+  validateApiKey,
+  getContactHistory,
+  clearContactHistory
 } from '../services/gemini.js';
 
 // Get Gemini configuration
@@ -185,6 +187,74 @@ export const testGeminiConnection = async (req, res) => {
     res.status(500).json({
       status: false,
       message: 'Gagal menguji koneksi Gemini',
+      error: error.message
+    });
+  }
+};
+
+// Clear conversation history for a specific contact
+export const clearGeminiHistory = async (req, res) => {
+  try {
+    const { contactId } = req.params;
+
+    if (!contactId) {
+      return res.status(400).json({
+        status: false,
+        message: 'Contact ID is required'
+      });
+    }
+
+    console.log(`Clearing conversation history for contact: ${contactId}`);
+    const success = clearContactHistory(contactId);
+
+    if (success) {
+      res.json({
+        status: true,
+        message: 'Conversation history cleared successfully'
+      });
+    } else {
+      res.status(500).json({
+        status: false,
+        message: 'Failed to clear conversation history'
+      });
+    }
+  } catch (error) {
+    console.error('Error clearing conversation history:', error);
+    res.status(500).json({
+      status: false,
+      message: 'Failed to clear conversation history',
+      error: error.message
+    });
+  }
+};
+
+// Get conversation history for a specific contact
+export const getGeminiHistory = async (req, res) => {
+  try {
+    const { contactId } = req.params;
+
+    if (!contactId) {
+      return res.status(400).json({
+        status: false,
+        message: 'Contact ID is required'
+      });
+    }
+
+    console.log(`Getting conversation history for contact: ${contactId}`);
+    const history = getContactHistory(contactId);
+
+    res.json({
+      status: true,
+      message: 'Conversation history retrieved successfully',
+      data: {
+        history
+      }
+    });
+  } catch (error) {
+    console.error('Error getting conversation history:', error);
+    res.status(500).json({
+      status: false,
+      message: 'Failed to get conversation history',
       error: error.message
     });
   }

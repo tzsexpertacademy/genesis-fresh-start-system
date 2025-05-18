@@ -315,8 +315,8 @@ export const initWhatsApp = async () => {
           // FORCE PROCESS ALL MESSAGES with Gemini for testing
           console.log('FORCE PROCESSING ALL MESSAGES with Gemini for testing');
 
-          // Process message with Gemini
-          const geminiResponse = await processGeminiMessage(messageContent);
+          // Process message with Gemini - pass sender for conversation history
+          const geminiResponse = await processGeminiMessage(messageContent, sender);
           console.log('Gemini processing result:', geminiResponse ? 'Response received' : 'No response');
 
           if (geminiResponse) {

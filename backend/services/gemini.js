@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getConversationHistory, addToConversationHistory, formatHistoryForGemini, clearConversationHistory } from './conversationHistory.js';
 
 // Load environment variables
 dotenv.config();
@@ -176,6 +177,18 @@ const prepareHistory = (history = []) => {
   }));
 };
 
+// Get conversation history for a specific contact
+export const getContactHistory = (contactId) => {
+  if (!contactId) return [];
+  return getConversationHistory(contactId);
+};
+
+// Clear conversation history for a specific contact
+export const clearContactHistory = (contactId) => {
+  if (!contactId) return false;
+  return clearConversationHistory(contactId);
+};
+
 // Format system instructions with user prompt
 const formatPromptWithInstructions = (systemInstructions, userPrompt) => {
   // Clean and validate inputs
@@ -234,8 +247,17 @@ export const generateResponse = async (prompt, history = []) => {
     console.log('Generating response for prompt:', prompt);
     console.log('Using history with', history.length, 'messages');
 
+    // Log history for debugging
+    if (history.length > 0) {
+      console.log('History preview:');
+      history.forEach((msg, i) => {
+        console.log(`  [${i}] ${msg.role}: ${msg.content.substring(0, 30)}...`);
+      });
+    }
+
     // Create a chat session with history
     const formattedHistory = prepareHistory(history);
+    console.log(`Formatted ${formattedHistory.length} history items for Gemini API`);
 
     // Create chat session with history and system instructions
     const chatSession = model.startChat({
@@ -259,6 +281,7 @@ export const generateResponse = async (prompt, history = []) => {
     }
 
     // Send the message to the chat session
+    console.log('Sending message to Gemini chat session...');
     const result = await chatSession.sendMessage(prompt);
 
     // Extract the response text
@@ -392,8 +415,9 @@ export const validateApiKey = async (apiKey) => {
 };
 
 // Process messages from WhatsApp
-export const processMessage = async (message) => {
+export const processMessage = async (message, sender = null) => {
   console.log('Gemini processMessage called with message:', message.substring(0, 50) + (message.length > 50 ? '...' : ''));
+  console.log('Sender:', sender || 'Unknown');
 
   // FORCE ENABLE for testing
   const config = getConfig();
@@ -421,13 +445,40 @@ export const processMessage = async (message) => {
       return null;
     }
 
+    // Get conversation history for this sender if available
+    let history = [];
+    if (sender) {
+      console.log(`Getting conversation history for sender: ${sender}`);
+      history = getConversationHistory(sender);
+      console.log(`Retrieved ${history.length} previous messages from conversation history for ${sender}`);
+
+      if (history.length > 0) {
+        console.log('History preview:');
+        history.slice(-2).forEach((msg, i) => {
+          console.log(`  [${i}] ${msg.role}: ${msg.content.substring(0, 30)}...`);
+        });
+      }
+    }
+
+    // Add user message to history before generating response
+    if (sender) {
+      console.log(`Adding user message to history for sender: ${sender}`);
+      addToConversationHistory(sender, 'user', message);
+    }
+
     console.log('Processing message with Gemini...');
-    // Generate response
-    const response = await generateResponse(message);
+    // Generate response with conversation history
+    const response = await generateResponse(message, history);
 
     if (response.error) {
       console.error('Error generating response:', response.error);
       return response.fallbackResponse || 'Maaf, saya tidak dapat memproses permintaan Anda saat ini.';
+    }
+
+    // Add assistant response to history
+    if (sender) {
+      console.log(`Adding assistant response to history for sender: ${sender}`);
+      addToConversationHistory(sender, 'assistant', response.text);
     }
 
     console.log('Gemini response generated successfully:', response.text.substring(0, 50) + (response.text.length > 50 ? '...' : ''));

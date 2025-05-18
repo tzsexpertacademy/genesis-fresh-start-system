@@ -25,6 +25,8 @@ import {
   generateGeminiResponse,
   testGeminiConnection,
   validateGeminiApiKey,
+  getGeminiHistory,
+  clearGeminiHistory,
 } from '../controllers/gemini.js';
 
 
@@ -114,6 +116,8 @@ router.post('/gemini/config', authenticate, updateGeminiConfig);
 router.post('/gemini/generate', authenticate, generateGeminiResponse);
 router.get('/gemini/test', authenticate, testGeminiConnection);
 router.post('/gemini/validate-key', validateGeminiApiKey); // No authentication for API key validation
+router.get('/gemini/history/:contactId', authenticate, getGeminiHistory);
+router.delete('/gemini/history/:contactId', authenticate, clearGeminiHistory);
 
 
 // Contact routes
