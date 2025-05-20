@@ -1,8 +1,8 @@
-Berikut adalah versi yang lebih profesional dari panduan tersebut, tanpa mengubah langkah-langkahnya:
+
 
 ---
 
-## 📱 Instalasi dan Menjalankan WA-Gemini di Android (via Termux & Ubuntu CLI)
+## Instalasi dan Menjalankan WA-Gemini di Android (via Termux & Ubuntu CLI)
 
 ### 1. Unduh dan Instal Aplikasi yang Dibutuhkan
 
