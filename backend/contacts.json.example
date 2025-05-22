@@ -1,0 +1,69 @@
+{
+  "contacts": [
+    {
+      "id": "1",
+      "name": "John Doe",
+      "phoneNumber": "6281234567890",
+      "email": "john.doe@example.com",
+      "notes": "Friend",
+      "tags": ["friend", "work"],
+      "lastContact": "2023-05-15T08:30:00Z"
+    },
+    {
+      "id": "2",
+      "name": "Jane Smith",
+      "phoneNumber": "6287654321098",
+      "email": "jane.smith@example.com",
+      "notes": "Colleague",
+      "tags": ["work", "project-alpha"],
+      "lastContact": "2023-05-10T14:45:00Z"
+    },
+    {
+      "id": "3",
+      "name": "Alice Johnson",
+      "phoneNumber": "6289876543210",
+      "email": "alice.johnson@example.com",
+      "notes": "Client",
+      "tags": ["client", "important"],
+      "lastContact": "2023-05-12T11:20:00Z"
+    },
+    {
+      "id": "4",
+      "name": "Bob Williams",
+      "phoneNumber": "6282345678901",
+      "email": "bob.williams@example.com",
+      "notes": "Supplier",
+      "tags": ["supplier", "business"],
+      "lastContact": "2023-05-08T09:15:00Z"
+    },
+    {
+      "id": "5",
+      "name": "Charlie Brown",
+      "phoneNumber": "6285678901234",
+      "email": "charlie.brown@example.com",
+      "notes": "Family",
+      "tags": ["family", "personal"],
+      "lastContact": "2023-05-14T18:30:00Z"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g1",
+      "name": "Work Team",
+      "members": ["2", "3", "4"],
+      "description": "Work colleagues and business contacts"
+    },
+    {
+      "id": "g2",
+      "name": "Friends",
+      "members": ["1", "5"],
+      "description": "Personal friends"
+    },
+    {
+      "id": "g3",
+      "name": "Project Alpha",
+      "members": ["2", "3"],
+      "description": "Team members for Project Alpha"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # WhatsApp Gateway Unofficial
 
-An unofficial WhatsApp Gateway system for learning, internal testing, or company communication simulation. This project is built with a client-server architecture using Node.js + Baileys for the backend and React + Vite + TailAdmin for the frontend.
+An unofficial WhatsApp Gateway system for learning, internal testing, or company communication simulation. This project is built with a client-server architecture using Node.js + Baileys for the backend and React + Vite + TailAdmin for the frontend. It now includes integrations with Gemini, OpenAI, and Groq for AI chat functionalities.
 
 > **IMPORTANT**: This is an unofficial WhatsApp Gateway for learning purposes only. Do not use it for spam or any activities that violate WhatsApp's Terms of Service.
 
@@ -14,6 +14,10 @@ An unofficial WhatsApp Gateway system for learning, internal testing, or company
 - Auto-reply functionality
 - Activity logging
 - Configuration management
+- AI Chat integration with:
+  - Google Gemini
+  - OpenAI (GPT models)
+  - Groq (LLaMA, Mixtral, etc.)
 
 ### Frontend (React + Vite + TailAdmin)
 - QR code scanning interface
@@ -23,12 +27,14 @@ An unofficial WhatsApp Gateway system for learning, internal testing, or company
 - Inbox viewer
 - Settings management
 - Log viewer with filtering
+- Chat interfaces for Gemini, OpenAI, and Groq
 
 ## Prerequisites
 
 - Node.js 16+ and pnpm
 - Modern web browser
 - WhatsApp account on your phone
+- API keys for Gemini, OpenAI, and Groq (optional, for AI features)
 
 ## Installation
 
@@ -58,27 +64,32 @@ pnpm install
 cp backend/.env.example backend/.env
 ```
 
-2. Edit the `backend/.env` file and add your Gemini API key:
+2. Edit the `backend/.env` file and add your API keys:
 ```
 PORT=3002
 NODE_ENV=development
+
+# General API Key for the application (if needed for other purposes)
 API_KEY=your-api-key-here
+
+# Gemini API Key
 GEMINI_API_KEY=your-gemini-api-key-here
+
+# OpenAI API Key
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Groq API Key
+GROQ_API_KEY=your-groq-api-key-here
 ```
 
-> **IMPORTANT**: The Gemini API key can ONLY be set through the `backend/.env` file for security reasons. It cannot be set through the frontend interface.
+> **IMPORTANT**: AI API keys (Gemini, OpenAI, Groq) can ONLY be set through the `backend/.env` file for security reasons. They cannot be set through the frontend interface.
 
 3. Copy the example config file and configure it if needed:
 ```bash
 cp backend/config.json.example backend/config.json
 ```
 
-### Frontend Configuration
-1. Update the API URL in `src/services/whatsappService.ts` if needed:
-```typescript
-const API_URL = 'http://localhost:3002/api';
-const API_KEY = 'your-api-key-here'; // Same as in backend .env
-```
+
 
 ## Running the Application
 
@@ -98,7 +109,7 @@ pnpm dev
 1. Open your browser and navigate to `http://localhost:5173`
 2. Go to WhatsApp Gateway > QR Login
 3. Scan the QR code with your WhatsApp app (Menu > Linked Devices > Link a Device)
-4. Once connected, you'll be redirected to the dashboard
+4. Once connected, you'll be redirected to the dashboard. You can then access the AI chat pages from the sidebar.
 
 ## Usage
 
@@ -120,6 +131,11 @@ pnpm dev
 2. View incoming messages
 3. Set auto-refresh interval if needed
 
+### AI Chat
+1. Navigate to "Gemini AI", "OpenAI Chat", or "Groq Chat" from the sidebar.
+2. Ensure the respective API key is set in `backend/.env`.
+3. Start chatting with the AI.
+
 ### Managing Settings
 1. Navigate to "Settings" page
 2. Configure auto-reply settings
@@ -136,10 +152,10 @@ pnpm dev
 ```
 whatsapp-gateway/
 ├── backend/                  # Backend server
-│   ├── controllers/          # API controllers
+│   ├── controllers/          # API controllers (gemini, openai, groq, whatsapp, etc.)
 │   ├── middleware/           # Express middleware
 │   ├── routes/               # API routes
-│   ├── services/             # Business logic
+│   ├── services/             # Business logic (gemini, openai, groq, whatsapp, etc.)
 │   ├── utils/                # Utility functions
 │   ├── sessions/             # WhatsApp session storage
 │   ├── logs/                 # Activity logs
@@ -150,11 +166,12 @@ whatsapp-gateway/
 │   ├── components/           # React components
 │   │   └── whatsapp/         # WhatsApp-specific components
 │   ├── pages/                # Page components
-│   │   └── WhatsApp/         # WhatsApp pages
-│   ├── services/             # API services
+│   │   └── WhatsApp/         # WhatsApp pages (GeminiAI, OpenAIChat, GroqChat, etc.)
+│   ├── services/             # API services (gemini, openai, groq, whatsapp, etc.)
 │   └── App.tsx               # Main app component
 │
 └── README.md                 # Project documentation
+└── AI_RULES.md               # AI development guidelines
 ```
 
 ## Security Considerations
@@ -164,6 +181,7 @@ whatsapp-gateway/
 - Use only for internal testing or learning
 - Respect WhatsApp's Terms of Service
 - Do not use for spam or bulk messaging
+- **Protect your API keys**: Store them securely in `backend/.env` and never commit this file.
 
 ### GitHub Security
 
@@ -195,6 +213,12 @@ When uploading to GitHub, make sure to:
 - If messages fail to send, check the connection status
 - If the session disconnects, try logging in again
 - Check logs for detailed error messages
+- Ensure API keys are correctly set in `backend/.env` for AI features.
+- Kalau ada bug fix sendiri ya hehe 
+
+## Support me
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y81F6AUQ)
 
 ## License
 
@@ -202,4 +226,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Disclaimer
 
-This project is not affiliated with, authorized by, maintained by, sponsored by, or endorsed by WhatsApp or any of its affiliates or subsidiaries. This is an independent project for educational purposes only.
+This project is not affiliated with, authorized by, maintained by, sponsored by, or endorsed by WhatsApp, Google, OpenAI, Groq, or any of their affiliates or subsidiaries. This is an independent project for educational purposes only.
+
+Vibe Coding

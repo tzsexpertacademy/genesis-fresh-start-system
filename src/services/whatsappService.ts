@@ -225,11 +225,21 @@ export const apiRequest = async (endpoint: string, options: RequestInit & { isFo
           }
         };
       }
+      
+      // Add fallback for /items endpoint
+      if (endpoint === '/items') {
+        return {
+          status: true,
+          message: 'Using fallback items due to throttling',
+          data: { items: [] }
+        };
+      }
 
-      // For other endpoints, return a default response instead of throwing an error
+      // For all OTHER endpoints that would have shown the generic throttle message:
       return {
         status: false,
-        message: 'Request throttled, please try again later',
+        message: '', // Return empty message for throttled requests
+        isThrottled: true, // Add a flag to indicate it was a throttle
         data: null
       };
     }
@@ -536,7 +546,7 @@ export const apiRequest = async (endpoint: string, options: RequestInit & { isFo
         status: false,
         message: 'Cannot validate API key. Server connection error.',
         data: {
-          details: isConnectionError
+          details: isConnectionError(error)
             ? 'The backend server appears to be offline. Please check if the server is running.'
             : error instanceof Error ? error.message : 'Unknown error'
         }
@@ -638,11 +648,21 @@ export const apiRequest = async (endpoint: string, options: RequestInit & { isFo
         }
       };
     }
+    
+    // Add fallback for /items endpoint
+    if (endpoint === '/items') {
+      return {
+        status: true,
+        message: 'Using fallback items due to API error',
+        data: { items: [] }
+      };
+    }
+
 
     // For any other endpoint, return a generic error response
     return {
       status: false,
-      message: isConnectionError
+      message: isConnectionError(error)
         ? 'Server connection error. Please check if the backend server is running.'
         : error instanceof Error 
           ? `Error: ${error.message}`
@@ -869,7 +889,7 @@ export const getLogs = async (limit: number = 100) => {
 };
 
 // Helper function to identify connection errors
-function isConnectionError(error) {
+function isConnectionError(error: any): boolean {
   if (!error) return false;
   
   const errorMsg = error.message ? error.message.toLowerCase() : '';
@@ -880,8 +900,6 @@ function isConnectionError(error) {
     errorMsg.includes('econnrefused') ||
     errorMsg.includes('enotfound') ||
     errorMsg.includes('etimedout') ||
-    error.code === 'ECONNREFUSED' ||
-    error.code === 'ENOTFOUND' ||
-    error.code === 'ETIMEDOUT'
+    (error.code && ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT'].includes(error.code.toUpperCase()))
   );
 }

@@ -7,7 +7,19 @@ import AppSidebar from "./AppSidebar";
 import { initSSE, closeSSE } from "../services/sseService";
 import MobileNavBar from "../components/mobile/MobileNavBar";
 import MobileMenuDrawer from "../components/mobile/MobileMenuDrawer";
-import { GridIcon, PlugInIcon, GeminiIcon } from "../icons";
+import {
+  GridIcon,
+  PlugInIcon,
+  GeminiIcon,
+  BoxCubeIcon,
+  PageIcon,
+  CalenderIcon,
+  UserCircleIcon,
+  DollarLineIcon,
+  DocsIcon, // Added for Logs
+  TimeIcon, // Added for Schedule Message
+  ListIcon, // Corrected import path will be implicitly handled by changing the source
+} from "../icons"; // Corrected path from ../../icons to ../icons
 
 // Define mobile bottom navigation items with icons
 const bottomNavItems = [
@@ -35,9 +47,9 @@ const bottomNavItems = [
     path: "/whatsapp/inbox"
   },
   {
-    name: "Gemini AI",
-    icon: <GeminiIcon />,
-    path: "/whatsapp/gemini"
+    name: "AI Chat", // Generic name for AI chats
+    icon: <GeminiIcon />, // Using GeminiIcon as a placeholder for AI chats
+    path: "/whatsapp/gemini" // Default to Gemini, user can navigate to others from More menu
   }
 ];
 
@@ -45,74 +57,41 @@ const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
-  // Simple effect to ensure the layout is properly rendered
   useEffect(() => {
-    // Add a class to indicate the layout is ready
     document.body.classList.add('app-layout-ready');
-
-    // Initialize SSE connection for real-time notifications
     initSSE();
-
     return () => {
       document.body.classList.remove('app-layout-ready');
-
-      // Close SSE connection when component unmounts
       closeSSE();
     };
   }, []);
 
-  // Get the menu items for the More menu
+  // Updated and reordered mobileMenuItems for the drawer
   const mobileMenuItems = [
-    {
-      icon: <GridIcon />,
-      name: "Dashboard",
-      path: "/whatsapp/dashboard"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Send Message",
-      path: "/whatsapp/send-message"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Send Media",
-      path: "/whatsapp/send-media"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Inbox",
-      path: "/whatsapp/inbox"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Contacts",
-      path: "/whatsapp/contacts"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Blast Message",
-      path: "/whatsapp/blast-message"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Contact Categories",
-      path: "/whatsapp/contact-categories"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "Settings",
-      path: "/whatsapp/settings"
-    },
-    {
-      icon: <GeminiIcon />,
-      name: "Gemini AI",
-      path: "/whatsapp/gemini"
-    },
-    {
-      icon: <PlugInIcon />,
-      name: "QR Login",
-      path: "/whatsapp/login"
-    },
+    // Menu Utama
+    { icon: <GridIcon />, name: "Dashboard", path: "/whatsapp/dashboard" },
+    { icon: <BoxCubeIcon />, name: "Send Message", path: "/whatsapp/send-message" },
+    { icon: <PageIcon />, name: "Send Media", path: "/whatsapp/send-media" },
+    { icon: <CalenderIcon />, name: "Inbox", path: "/whatsapp/inbox" },
+    { icon: <UserCircleIcon />, name: "Contacts", path: "/whatsapp/contacts" },
+    { icon: <DollarLineIcon />, name: "Blast Message", path: "/whatsapp/blast-message" },
+    { icon: <PlugInIcon />, name: "Contact Categories", path: "/whatsapp/contact-categories" },
+    { icon: <ListIcon />, name: "Manage Items", path: "/whatsapp/manage-items" },
+    { icon: <TimeIcon />, name: "Schedule Message", path: "/whatsapp/schedule-message" }, // Added Schedule Message
+    { icon: <DocsIcon />, name: "Logs", path: "/whatsapp/logs" }, // Added Logs
+
+    // Menu AI
+    { icon: <PlugInIcon />, name: "Auto Reply WA", path: "/whatsapp/auto-reply-settings" },
+    { icon: <GeminiIcon />, name: "Gemini Settings", path: "/whatsapp/ai-settings/gemini" },
+    { icon: <PlugInIcon />, name: "OpenAI Settings", path: "/whatsapp/ai-settings/openai" },
+    { icon: <PlugInIcon />, name: "Groq Settings", path: "/whatsapp/ai-settings/groq" },
+    { icon: <GeminiIcon />, name: "Gemini AI Chat", path: "/whatsapp/gemini", isNew: true },
+    { icon: <PlugInIcon />, name: "OpenAI Chat", path: "/whatsapp/openai-chat", isNew: true },
+    { icon: <PlugInIcon />, name: "Groq Chat", path: "/whatsapp/groq-chat", isNew: true },
+
+    // Lainnya
+    { icon: <PlugInIcon />, name: "QR Login", path: "/whatsapp/login" }, // Changed icon for differentiation
+    { icon: <PageIcon />, name: "Old General Settings", path: "/whatsapp/settings" },
   ];
 
   return (
@@ -131,14 +110,10 @@ const LayoutContent: React.FC = () => {
           <Outlet />
         </div>
       </div>
-
-      {/* Mobile Navigation */}
       <MobileNavBar
         items={bottomNavItems}
         onMoreClick={() => setIsMoreMenuOpen(true)}
       />
-
-      {/* Mobile Menu Drawer */}
       <MobileMenuDrawer
         isOpen={isMoreMenuOpen}
         onClose={() => setIsMoreMenuOpen(false)}

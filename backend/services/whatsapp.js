@@ -5,8 +5,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Boom } from '@hapi/boom';
 import { logActivity } from '../utils/logger.js';
-import { getConfig } from '../config.js';
-import { processMessage as processGeminiMessage } from './gemini.js';
+import { getConfig as getAppConfig } from '../config.js'; // General app config
+import { getConfig as getAiConfig, processMessage as processGeminiMessage } from './gemini.js';
+import { processMessage as processOpenAIMessage } from './openaiService.js';
+import { processMessage as processGroqMessage } from './groqService.js';
+
 
 const { makeWASocket, DisconnectReason, useMultiFileAuthState } = baileys;
 
@@ -112,7 +115,6 @@ export const initWhatsApp = async () => {
 
         // Determine if we should reconnect
         const permanentDisconnect = isLoggedOut || isDeviceRemoved;
-        const temporaryDisconnect = isConnectionClosed || isConnectionLost || isTimedOut;
         const shouldReconnect = !permanentDisconnect;
 
         console.log('Connection closed due to:', errorMessage);
@@ -154,7 +156,7 @@ export const initWhatsApp = async () => {
           } else if (isConnectionReplaced) {
             console.log('Connection replaced, waiting longer before reconnecting');
             reconnectDelay = 10000; // Longer delay for connection replaced
-          } else if (temporaryDisconnect) {
+          } else if (isConnectionClosed || isConnectionLost || isTimedOut) { // Added temporaryDisconnect check
             console.log('Temporary disconnection detected, reconnecting soon');
             reconnectDelay = 3000; // Shorter delay for temporary issues
           }
@@ -266,11 +268,8 @@ export const initWhatsApp = async () => {
                               'Media message';
 
         console.log(`New message from ${sender}: ${messageContent}`);
-
-        // Log message
         logActivity('received', sender, messageContent);
 
-        // Create message object with timestamp first to ensure consistency
         const messageTime = new Date().toISOString();
         const messageObject = {
           id: msg.key.id,
@@ -280,77 +279,86 @@ export const initWhatsApp = async () => {
           read: false
         };
 
-        // We'll let broadcastNewMessage handle updating the inbox.json file
-        // This ensures a single source of truth and prevents race conditions
-
-        // Set a flag in the flag file to indicate new messages (for backward compatibility)
-        // This will be used by the frontend to trigger a refresh
         fs.writeJsonSync(flagFile, {
           hasNewMessages: true,
           lastMessageTime: messageTime,
           messageId: msg.key.id
         }, { spaces: 2 });
 
-        // Message object already created above
-
-        // Send real-time notification via WebSocket
-        console.log('Broadcasting new message via WebSocket:', {
-          sender,
-          messageId: msg.key.id,
-          messageTime
-        });
-
         try {
-          // Broadcast via WebSocket
           broadcastNewMessage(messageObject);
-
           console.log('Real-time notifications sent successfully');
         } catch (error) {
           console.error('Error sending real-time notifications:', error);
         }
 
-        // Try with Gemini for AI requests
-        console.log('Attempting to process message with Gemini...');
-        try {
-          // FORCE PROCESS ALL MESSAGES with Gemini for testing
-          console.log('FORCE PROCESSING ALL MESSAGES with Gemini for testing');
+        // AI Processing Logic
+        const aiConfig = getAiConfig(); 
+        console.log('[whatsapp.js] AI Config for incoming message:', { enabled: aiConfig.enabled, activeAIProvider: aiConfig.activeAIProvider });
+        const appGenConfig = getAppConfig(); 
 
-          // Process message with Gemini - pass sender for conversation history
-          const geminiResponse = await processGeminiMessage(messageContent, sender);
-          console.log('Gemini processing result:', geminiResponse ? 'Response received' : 'No response');
+        if (aiConfig.enabled) { 
+          console.log(`[whatsapp.js] AI Auto-Reply is ENABLED. Active provider: ${aiConfig.activeAIProvider}`);
+          let aiServiceResponse = null; 
+          
+          let systemInstructionsToUse = aiConfig.instructions; 
 
-          if (geminiResponse) {
-            console.log('Sending Gemini response back to WhatsApp...');
-            await sendTextMessage(sender, geminiResponse);
-            logActivity('ai_response_gemini', sender, geminiResponse);
-            console.log('Gemini response sent successfully');
-            return; // Skip regular auto-reply if Gemini responded
-          } else {
-            console.log('No response from Gemini, falling back to regular auto-reply');
-            // For testing, send a default response if Gemini fails
-            const defaultResponse = 'Maaf, Gemini tidak dapat memproses pesan Anda saat ini. Ini adalah pesan default.';
-            await sendTextMessage(sender, defaultResponse);
-            logActivity('ai_response_default', sender, defaultResponse);
-            console.log('Default response sent successfully');
-            return; // Skip regular auto-reply after sending default response
+          try {
+            switch (aiConfig.activeAIProvider) {
+              case 'gemini':
+                if (aiConfig.geminiSpecificInstructions && aiConfig.geminiSpecificInstructions.trim() !== '') {
+                  systemInstructionsToUse = aiConfig.geminiSpecificInstructions;
+                }
+                console.log(`[whatsapp.js] Using instructions for Gemini auto-reply: "${systemInstructionsToUse.substring(0,50)}..."`);
+                aiServiceResponse = await processGeminiMessage(messageContent, sender); 
+                break;
+              case 'openai':
+                if (aiConfig.openaiSpecificInstructions && aiConfig.openaiSpecificInstructions.trim() !== '') {
+                  systemInstructionsToUse = aiConfig.openaiSpecificInstructions;
+                }
+                console.log(`[whatsapp.js] Using instructions for OpenAI auto-reply: "${systemInstructionsToUse.substring(0,50)}..."`);
+                aiServiceResponse = await processOpenAIMessage(messageContent, sender, systemInstructionsToUse, aiConfig.openaiModel);
+                break;
+              case 'groq':
+                if (aiConfig.groqSpecificInstructions && aiConfig.groqSpecificInstructions.trim() !== '') {
+                  systemInstructionsToUse = aiConfig.groqSpecificInstructions;
+                }
+                console.log(`[whatsapp.js] Using instructions for Groq auto-reply: "${systemInstructionsToUse.substring(0,50)}..."`);
+                aiServiceResponse = await processGroqMessage(messageContent, sender, systemInstructionsToUse, aiConfig.groqModel);
+                break;
+              default:
+                console.log(`[whatsapp.js] Unknown AI provider: ${aiConfig.activeAIProvider}. Falling back to Gemini if configured.`);
+                if (process.env.GEMINI_API_KEY) { 
+                    if (aiConfig.geminiSpecificInstructions && aiConfig.geminiSpecificInstructions.trim() !== '') {
+                      systemInstructionsToUse = aiConfig.geminiSpecificInstructions;
+                    }
+                    console.log(`[whatsapp.js] Using instructions for Fallback Gemini auto-reply: "${systemInstructionsToUse.substring(0,50)}..."`);
+                    aiServiceResponse = await processGeminiMessage(messageContent, sender);
+                } else {
+                    console.log("[whatsapp.js] Fallback to Gemini failed: GEMINI_API_KEY not set.");
+                }
+            }
+
+            if (aiServiceResponse && aiServiceResponse.status && aiServiceResponse.text) {
+              console.log(`[whatsapp.js] Sending AI response (${aiConfig.activeAIProvider}) back to WhatsApp...`);
+              await sendTextMessage(sender, aiServiceResponse.text);
+              logActivity(`ai_response_${aiConfig.activeAIProvider}`, sender, aiServiceResponse.text);
+              console.log(`[whatsapp.js] AI response (${aiConfig.activeAIProvider}) sent successfully`);
+              return; 
+            } else {
+              console.log(`[whatsapp.js] No valid response from ${aiConfig.activeAIProvider} AI (Status: ${aiServiceResponse?.status}, Error: ${aiServiceResponse?.error}). Checking regular auto-reply.`);
+            }
+          } catch (aiError) {
+            console.error(`[whatsapp.js] Error processing message with ${aiConfig.activeAIProvider} AI:`, aiError);
           }
-        } catch (geminiError) {
-          console.error('Error processing message with Gemini:', geminiError);
-          console.error('Error details:', geminiError.stack);
-
-          // For testing, send an error response
-          const errorResponse = 'Maaf, terjadi kesalahan saat memproses pesan Anda dengan Gemini. Silakan coba lagi nanti.';
-          await sendTextMessage(sender, errorResponse);
-          logActivity('ai_response_error', sender, errorResponse);
-          console.log('Error response sent successfully');
-          return; // Skip regular auto-reply after sending error response
+        } else {
+            console.log("[whatsapp.js] AI Auto-Reply is DISABLED in settings.");
         }
-
-        // Regular auto-reply if enabled
-        const config = getConfig();
-        if (config.autoReply && config.autoReply.enabled) {
-          console.log('Sending regular auto-reply message');
-          await sendTextMessage(sender, config.autoReply.message);
+        
+        // If AI didn't respond (or was disabled), try the old simple auto-reply
+        if (appGenConfig.autoReply && appGenConfig.autoReply.enabled) {
+          console.log('[whatsapp.js] Sending regular auto-reply message');
+          await sendTextMessage(sender, appGenConfig.autoReply.message);
         }
       }
     });
@@ -368,36 +376,21 @@ export const initWhatsApp = async () => {
 
 // Get QR code
 export const getQRCode = async () => {
-  // If we already have a QR code, return it
-  if (qrString) {
-    return qrString;
-  }
-
-  // If we're already connected, no need for QR code
-  if (connectionStatus === 'connected') {
-    return null;
-  }
-
-  // If we're disconnected, try to initialize WhatsApp to get a QR code
+  if (qrString) return qrString;
+  if (connectionStatus === 'connected') return null;
   if (connectionStatus === 'disconnected') {
     console.log('No QR code available, initializing WhatsApp to get one');
-
-    // Initialize WhatsApp
     try {
       await initWhatsApp();
-
-      // Wait for QR code to be generated
       let attempts = 0;
       while (!qrString && attempts < 20) {
         await new Promise(resolve => setTimeout(resolve, 500));
         attempts++;
-        console.log(`Waiting for QR code, attempt ${attempts}/20`);
       }
     } catch (error) {
       console.error('Error initializing WhatsApp for QR code:', error);
     }
   }
-
   return qrString;
 };
 
@@ -412,46 +405,29 @@ export const sendTextMessage = async (number, message) => {
     if (!waSocket || connectionStatus !== 'connected') {
       throw new Error('WhatsApp is not connected');
     }
-
-    // Format number (remove + and add @s.whatsapp.net)
     const formattedNumber = `${number.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
-
-    // Send message
     const result = await waSocket.sendMessage(formattedNumber, { text: message });
-
-    // Log activity
     logActivity('sent', number, message);
 
-    // Add sent message directly to inbox.json
     try {
-      // Create message object
       const messageTime = new Date().toISOString();
       const messageObject = {
         id: result.key.id,
-        sender: 'me', // Mark as outgoing message
-        recipient: formattedNumber, // Store recipient for reference
+        sender: 'me',
+        recipient: formattedNumber,
         message: message,
         timestamp: messageTime,
-        read: true, // Outgoing messages are always read
-        outgoing: true // Flag to identify outgoing messages
+        read: true,
+        outgoing: true
       };
-
-      // Read current inbox
       const inbox = fs.readJsonSync(inboxFile, { throws: false }) || [];
-
-      // Check if message already exists to prevent duplicates
       if (!inbox.some(msg => msg.id === messageObject.id)) {
-        // Add new message
         inbox.push(messageObject);
-
-        // Write back to file
         fs.writeJsonSync(inboxFile, inbox, { spaces: 2 });
-        console.log('Outgoing message added to inbox:', result.key.id);
       }
     } catch (error) {
       console.error('Error adding outgoing message to inbox:', error);
     }
-
     return result;
   } catch (error) {
     console.error('Error sending message:', error);
@@ -466,40 +442,21 @@ export const sendMediaMessage = async (number, filePath, caption = '') => {
     if (!waSocket || connectionStatus !== 'connected') {
       throw new Error('WhatsApp is not connected');
     }
-
-    // Format number
     const formattedNumber = `${number.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
-
-    // Check if file exists
     if (!fs.existsSync(filePath)) {
       throw new Error('File not found');
     }
-
-    // Get file extension
     const ext = path.extname(filePath).toLowerCase();
     let messageType;
+    if (['.jpg', '.jpeg', '.png'].includes(ext)) messageType = 'image';
+    else if (['.pdf'].includes(ext)) messageType = 'document';
+    else if (['.doc', '.docx'].includes(ext)) messageType = 'document';
+    else throw new Error('Unsupported file type');
 
-    // Determine message type based on file extension
-    if (['.jpg', '.jpeg', '.png'].includes(ext)) {
-      messageType = 'image';
-    } else if (['.pdf'].includes(ext)) {
-      messageType = 'document';
-    } else if (['.doc', '.docx'].includes(ext)) {
-      messageType = 'document';
-    } else {
-      throw new Error('Unsupported file type');
-    }
-
-    // Read file
     const file = fs.readFileSync(filePath);
-
-    // Send media
     let result;
     if (messageType === 'image') {
-      result = await waSocket.sendMessage(formattedNumber, {
-        image: file,
-        caption: caption,
-      });
+      result = await waSocket.sendMessage(formattedNumber, { image: file, caption: caption });
     } else {
       result = await waSocket.sendMessage(formattedNumber, {
         document: file,
@@ -508,14 +465,7 @@ export const sendMediaMessage = async (number, filePath, caption = '') => {
         caption: caption,
       });
     }
-
-    // Log activity
-    logActivity('sent_media', number, {
-      type: messageType,
-      filename: path.basename(filePath),
-      caption,
-    });
-
+    logActivity('sent_media', number, { type: messageType, filename: path.basename(filePath), caption });
     return result;
   } catch (error) {
     console.error('Error sending media:', error);
@@ -527,24 +477,17 @@ export const sendMediaMessage = async (number, filePath, caption = '') => {
 // Logout and clear session
 export const logoutWhatsApp = async () => {
   try {
-    // Clear the keep-alive interval
     if (global.keepAliveInterval) {
       clearInterval(global.keepAliveInterval);
       global.keepAliveInterval = null;
     }
-
     if (waSocket) {
       try {
-        // Try to logout gracefully
         await waSocket.logout();
       } catch (logoutError) {
         console.log('Error during logout, proceeding with cleanup:', logoutError);
       }
-
-      // Clean up session files
       await fs.emptyDir(sessionsDir);
-
-      // Reset state
       connectionStatus = 'disconnected';
       qrString = null;
       waSocket = null;
@@ -553,7 +496,6 @@ export const logoutWhatsApp = async () => {
     return false;
   } catch (error) {
     console.error('Error logging out:', error);
-    // Even if there's an error, try to clean up
     connectionStatus = 'disconnected';
     qrString = null;
     waSocket = null;
@@ -571,46 +513,20 @@ export const getInboxMessages = () => {
   }
 };
 
-// Function to check connection status and reconnect if needed
 const checkConnectionStatus = async () => {
   try {
-    console.log('Checking WhatsApp connection status...');
-
-    // If we're already trying to reconnect, don't interfere
-    if (connectionStatus === 'connecting') {
-      console.log('Connection is already in progress, skipping check');
-      return;
-    }
-
-    // If we're disconnected, try to reconnect
+    if (connectionStatus === 'connecting') return;
     if (connectionStatus === 'disconnected') {
-      console.log('Connection is disconnected, attempting to reconnect');
       await initWhatsApp();
       return;
     }
-
-    // If we have a socket but it's not connected properly
     if (waSocket) {
       const isSocketConnected = waSocket.ws && waSocket.ws.readyState === waSocket.ws.OPEN;
-
       if (!isSocketConnected && connectionStatus === 'connected') {
-        console.log('Socket is closed but status is connected, fixing inconsistent state');
         connectionStatus = 'disconnected';
-
-        // Clear any existing keep-alive interval
-        if (global.keepAliveInterval) {
-          clearInterval(global.keepAliveInterval);
-          global.keepAliveInterval = null;
-        }
-
-        // Try to reconnect after a short delay
+        if (global.keepAliveInterval) clearInterval(global.keepAliveInterval);
         setTimeout(() => {
-          if (connectionStatus === 'disconnected') {
-            console.log('Attempting to reconnect after inconsistent state...');
-            initWhatsApp().catch(e => {
-              console.error('Failed to reconnect after inconsistent state:', e);
-            });
-          }
+          if (connectionStatus === 'disconnected') initWhatsApp().catch(e => console.error(e));
         }, 3000);
       }
     }
@@ -619,34 +535,20 @@ const checkConnectionStatus = async () => {
   }
 };
 
-// Set up periodic connection check (every 2 minutes)
 let connectionCheckInterval = setInterval(checkConnectionStatus, 120000);
 
-// Initialize WhatsApp on startup
 initWhatsApp();
 
-// Handle process termination
 process.on('SIGINT', async () => {
   console.log('Received SIGINT, cleaning up...');
-
-  // Clear intervals
-  if (global.keepAliveInterval) {
-    clearInterval(global.keepAliveInterval);
-  }
-
-  if (connectionCheckInterval) {
-    clearInterval(connectionCheckInterval);
-  }
-
-  // Try to logout gracefully
+  if (global.keepAliveInterval) clearInterval(global.keepAliveInterval);
+  if (connectionCheckInterval) clearInterval(connectionCheckInterval);
   if (waSocket && connectionStatus === 'connected') {
     try {
-      console.log('Logging out from WhatsApp...');
       await waSocket.logout();
     } catch (error) {
       console.error('Error during logout:', error);
     }
   }
-
   process.exit(0);
 });

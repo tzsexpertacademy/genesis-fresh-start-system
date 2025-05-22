@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "name": "Pelanggan",
+    "color": "#3B82F6",
+    "description": "Kategori untuk pelanggan tetap",
+    "created_at": "2023-05-17T04:24:00.000Z",
+    "updated_at": "2023-05-17T04:24:00.000Z"
+  },
+  {
+    "id": "2",
+    "name": "Keluarga",
+    "color": "#10B981",
+    "description": "Kategori untuk anggota keluarga",
+    "created_at": "2023-05-17T04:24:00.000Z",
+    "updated_at": "2023-05-17T04:24:00.000Z"
+  },
+  {
+    "id": "3",
+    "name": "Teman",
+    "color": "#F59E0B",
+    "description": "Kategori untuk teman-teman",
+    "created_at": "2023-05-17T04:24:00.000Z",
+    "updated_at": "2023-05-17T04:24:00.000Z"
+  }
+]

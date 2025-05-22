@@ -29,6 +29,11 @@ import {
   clearGeminiHistory,
 } from '../controllers/gemini.js';
 
+// Import OpenAI controllers
+import * as openAIController from '../controllers/openaiController.js';
+
+// Import Groq controllers
+import * as groqController from '../controllers/groqController.js';
 
 // Import Contact controllers
 import {
@@ -50,8 +55,12 @@ import {
   getContactsInCategory,
 } from '../controllers/contactCategories.js';
 
-// Import contacts routes
-import contactsRoutes from './contacts.js';
+// Import Item controllers
+import * as itemsController from '../controllers/itemsController.js';
+
+// Import Scheduled Message controllers
+import * as scheduleController from '../controllers/scheduleController.js';
+
 
 // Import middleware
 import { authenticate } from '../middleware/auth.js';
@@ -108,8 +117,6 @@ router.get('/inbox', authenticate, getInbox);
 router.get('/contact/:phoneNumber/messages', authenticate, getContactMessages);
 router.get('/logs', authenticate, getActivityLogs);
 
-// WebSocket is now used for real-time notifications instead of SSE
-
 // Gemini routes
 router.get('/gemini/config', authenticate, getGeminiConfig);
 router.post('/gemini/config', authenticate, updateGeminiConfig);
@@ -119,8 +126,15 @@ router.post('/gemini/validate-key', validateGeminiApiKey); // No authentication 
 router.get('/gemini/history/:contactId', authenticate, getGeminiHistory);
 router.delete('/gemini/history/:contactId', authenticate, clearGeminiHistory);
 
+// OpenAI routes
+router.get('/openai/config', authenticate, openAIController.getConfig);
+router.post('/openai/generate', authenticate, openAIController.generateResponse);
 
-// Contact routes
+// Groq routes
+router.get('/groq/config', authenticate, groqController.getConfig);
+router.post('/groq/generate', authenticate, groqController.generateResponse);
+
+// Contact routes (using new controllers)
 router.get('/contacts', authenticate, getContacts);
 router.get('/contacts/:id', authenticate, getContact);
 router.post('/contacts', authenticate, createContact);
@@ -154,14 +168,24 @@ const csvUpload = multer({
 router.post('/contacts/import', authenticate, csvUpload.single('file'), importContacts);
 
 // Contact category routes
-router.get('/contact-categories', getContactCategories);
-router.get('/contact-categories/:id', getContactCategory);
-router.post('/contact-categories', createContactCategory);
-router.put('/contact-categories/:id', updateContactCategory);
-router.delete('/contact-categories/:id', deleteContactCategory);
-router.get('/contact-categories/:id/contacts', getContactsInCategory);
+router.get('/contact-categories', authenticate, getContactCategories); // Authenticated
+router.get('/contact-categories/:id', authenticate, getContactCategory); // Authenticated
+router.post('/contact-categories', authenticate, createContactCategory); // Authenticated
+router.put('/contact-categories/:id', authenticate, updateContactCategory); // Authenticated
+router.delete('/contact-categories/:id', authenticate, deleteContactCategory); // Authenticated
+router.get('/contact-categories/:id/contacts', authenticate, getContactsInCategory); // Authenticated
 
-// Use contacts routes
-router.use('/contacts-management', contactsRoutes);
+// Item routes
+router.get('/items', authenticate, itemsController.getItems);
+router.post('/items', authenticate, itemsController.createItem);
+router.get('/items/:id', authenticate, itemsController.getItem);
+router.put('/items/:id', authenticate, itemsController.updateItem);
+router.delete('/items/:id', authenticate, itemsController.deleteItem);
+
+// Scheduled Message routes
+router.get('/scheduled-messages', authenticate, scheduleController.getScheduledMessages);
+router.post('/scheduled-messages', authenticate, scheduleController.scheduleMessage);
+router.delete('/scheduled-messages/:id', authenticate, scheduleController.deleteScheduledMessage);
+
 
 export default router;

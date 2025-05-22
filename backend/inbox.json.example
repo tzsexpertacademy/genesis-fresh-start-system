@@ -1,0 +1,24 @@
+[
+  {
+    "id": "3A5F47D12012E03E3B8B",
+    "sender": "6285111111111@s.whatsapp.net",
+    "message": "hi",
+    "timestamp": "2025-05-18T15:16:28.689Z",
+    "read": false
+  },
+  {
+    "id": "3EB0044746CC8F6DC04E3C",
+    "sender": "me",
+    "recipient": "628511111111@s.whatsapp.net",
+    "message": "Ada apa? Cepat.\n",
+    "timestamp": "2025-05-18T15:16:29.942Z",
+    "read": true,
+    "outgoing": true
+  },
+  {
+    "id": "3A7394B289217A0C8866",
+    "sender": "628511111111@s.whatsapp.net",
+    "message": "wtf",
+    "timestamp": "2025-05-18T15:16:35.156Z",
+    "read": false
+  },

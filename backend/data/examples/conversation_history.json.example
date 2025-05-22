@@ -1,5 +1,15 @@
 {
-  "62858833333": [
+  "62858873333333": [
+    {
+      "role": "user",
+      "content": "Hi",
+      "timestamp": "2025-05-21T09:47:48.092Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Hai! Senang bertemu denganmu. Ada yang bisa kubantu hari ini?\n",
+      "timestamp": "2025-05-21T09:47:48.706Z"
+    },
     {
       "role": "user",
       "content": "Kamu ngga jual kopi",
@@ -39,16 +49,6 @@
       "role": "assistant",
       "content": "Baik! Boleh tahu alamat lengkapnya, Pak/Bu? Sekalian nomor telepon yang bisa dihubungi, ya. Supaya kurir kami tidak kesulitan mencari alamatnya.\n",
       "timestamp": "2025-05-21T11:54:01.035Z"
-    },
-    {
-      "role": "user",
-      "content": "oi",
-      "timestamp": "2025-05-22T02:12:23.777Z"
-    },
-    {
-      "role": "assistant",
-      "content": "Oi! Ada apa nih? Santai aja, cerita aja kalau ada yang mau diobrolin.\n",
-      "timestamp": "2025-05-22T02:12:25.520Z"
     }
   ]
 }

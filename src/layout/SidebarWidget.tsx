@@ -10,7 +10,7 @@ export default function SidebarWidget() {
     { icon: <UserCircleIcon className="w-4 h-4" />, text: "Auto-reply" },
     { icon: <DollarLineIcon className="w-4 h-4" />, text: "Activity logging" }
   ];
-
+  
   return (
     <div
       className="mx-auto mb-8 w-full max-w-60 rounded-xl bg-gray-50 px-4 py-5 shadow-theme-xs dark:bg-white/[0.03]"
@@ -21,7 +21,7 @@ export default function SidebarWidget() {
             WhatsApp Gateway
           </h3>
         </div>
-
+  
         <div className="mb-4">
           <ul className="space-y-2">
             {features.map((feature, index) => (
@@ -32,14 +32,16 @@ export default function SidebarWidget() {
             ))}
           </ul>
         </div>
-
-        <Link
-          to="/whatsapp/login"
-          className="flex items-center justify-center p-2 font-medium text-white rounded-lg bg-brand-500 text-theme-sm hover:bg-brand-600 transition-colors"
+  
+        <a
+          href="https://www.threads.com/@ori_fin"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center p-2 font-medium rounded-lg bg-warning-300 text-gray-800 text-theme-sm hover:bg-warning-400 transition-colors"
         >
-          Connect WhatsApp
-        </Link>
+          Support Me
+        </a>
       </div>
     </div>
   );
-}
+  }

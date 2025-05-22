@@ -9,33 +9,76 @@ import ImportContactsForm from '../../components/whatsapp/ImportContactsForm';
 
 const Contacts = () => {
   const [contacts, setContacts] = useState<WhatsAppContact[]>([]);
-  const [categories, setCategories] = useState<WhatsAppContactCategory[]>([]);
+  const [allCategories, setAllCategories] = useState<WhatsAppContactCategory[]>([]); // Renamed for clarity
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [showImportForm, setShowImportForm] = useState<boolean>(false);
   const [editingContact, setEditingContact] = useState<WhatsAppContact | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all'); // Renamed for clarity
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Fetch contacts and categories
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const contactsResponse = await getContacts();
-      const categoriesResponse = await getContactCategories();
+      const [contactsResponse, categoriesResponse] = await Promise.all([
+        getContacts(),
+        getContactCategories()
+      ]);
 
-      if (contactsResponse.status) {
-        setContacts(contactsResponse.data.contacts || []);
-      } 
-      
-      if (categoriesResponse.status) {
-        setCategories(categoriesResponse.data.categories || []);
+      let fetchedContacts: WhatsAppContact[] = [];
+      let fetchedCategories: WhatsAppContactCategory[] = [];
+
+      if (contactsResponse.status && contactsResponse.data?.contacts) {
+        fetchedContacts = contactsResponse.data.contacts;
+      } else if (!contactsResponse.status) {
+        console.error('Failed to load contacts:', contactsResponse.message);
+        setError(prev => prev ? `${prev}, Failed to load contacts` : 'Failed to load contacts');
       }
       
-      if (!contactsResponse.status || !categoriesResponse.status) {
-        setError('Failed to load contacts or categories');
+      if (categoriesResponse.status && categoriesResponse.data?.categories) {
+        fetchedCategories = categoriesResponse.data.categories;
+        setAllCategories(fetchedCategories); // Store all available categories
+      } else if (!categoriesResponse.status) {
+        console.error('Failed to load categories:', categoriesResponse.message);
+        setError(prev => prev ? `${prev}, Failed to load categories` : 'Failed to load categories');
       }
+
+      // Populate contact.categories with full category objects
+      if (fetchedContacts.length > 0 && fetchedCategories.length > 0) {
+        const categoryMap = new Map(fetchedCategories.map(cat => [cat.id, cat]));
+        
+        const populatedContacts = fetchedContacts.map(contact => {
+          const contactCategoryObjects: WhatsAppContactCategory[] = [];
+          if (contact.categories && Array.isArray(contact.categories)) {
+            // Assuming contact.categories might be an array of IDs or partial objects
+            contact.categories.forEach((catIdentifier: any) => {
+              let categoryId: string | undefined = undefined;
+              if (typeof catIdentifier === 'string') {
+                categoryId = catIdentifier;
+              } else if (typeof catIdentifier === 'object' && catIdentifier !== null && catIdentifier.id) {
+                categoryId = catIdentifier.id;
+              }
+
+              if (categoryId) {
+                const fullCategory = categoryMap.get(categoryId);
+                if (fullCategory) {
+                  contactCategoryObjects.push(fullCategory);
+                } else {
+                  console.warn(`Category with ID ${categoryId} not found for contact ${contact.id}`);
+                }
+              }
+            });
+          }
+          return { ...contact, categories: contactCategoryObjects };
+        });
+        setContacts(populatedContacts);
+      } else {
+        setContacts(fetchedContacts); // Set contacts even if categories are not fully populated yet
+      }
+
     } catch (err) {
       console.error('Error fetching contacts/categories:', err);
       setError('An error occurred while fetching data');
@@ -56,7 +99,7 @@ const Contacts = () => {
         if (response.status) {
           setContacts(contacts.filter(contact => contact.id !== id));
         } else {
-          setError('Failed to delete contact');
+          setError('Failed to delete contact: ' + (response.message || 'Unknown error'));
         }
       } catch (err) {
         setError('An error occurred while deleting the contact');
@@ -76,14 +119,14 @@ const Contacts = () => {
     setShowAddForm(false);
     setShowImportForm(false);
     setEditingContact(null);
-    fetchData();
+    fetchData(); // Refetch data to ensure UI is up-to-date
   };
 
   // Filter contacts by category and search term
   const filteredContacts = contacts.filter(contact => {
     // Filter by category
-    const categoryMatch = selectedCategory === 'all' ||
-      (contact.categories && contact.categories.some(cat => cat.id === selectedCategory));
+    const categoryMatch = selectedCategoryFilter === 'all' ||
+      (contact.categories && contact.categories.some(cat => cat && cat.id === selectedCategoryFilter));
 
     // Filter by search term
     const searchMatch =
@@ -149,12 +192,12 @@ const Contacts = () => {
             </label>
             <select
               id="categoryFilter"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              value={selectedCategoryFilter}
+              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
               className="w-auto min-w-[160px] rounded border border-stroke py-2 px-3 text-sm outline-none focus:border-primary dark:border-strokedark dark:bg-boxdark"
             >
               <option value="all">All Categories</option>
-              {categories.map((category) => (
+              {allCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name} ({category.contact_count || 0})
                 </option>
@@ -241,15 +284,21 @@ const Contacts = () => {
                     <div className="col-span-3 hidden md:flex items-center">
                       <div className="flex flex-wrap gap-1">
                         {contact.categories && contact.categories.length > 0 ? (
-                          contact.categories.map((category) => (
-                            <span
-                              key={category.id}
-                              className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
-                              style={{ backgroundColor: category.color, color: '#fff' }}
-                            >
-                              {category.name}
-                            </span>
-                          ))
+                          contact.categories.map((category) => {
+                            // Add a null check for category and category.id
+                            if (category && category.id) {
+                              return (
+                                <span
+                                  key={category.id}
+                                  className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                  style={{ backgroundColor: category.color, color: '#fff' }}
+                                >
+                                  {category.name}
+                                </span>
+                              );
+                            }
+                            return null; // Skip rendering if category or category.id is null/undefined
+                          })
                         ) : (
                           <span className="text-xs text-gray-500">No categories</span>
                         )}
@@ -296,7 +345,7 @@ const Contacts = () => {
         {showAddForm && (
           <ContactForm
             contact={editingContact}
-            categories={categories}
+            categories={allCategories} // Pass all available categories to the form
             onClose={() => {
               setShowAddForm(false);
               setEditingContact(null);

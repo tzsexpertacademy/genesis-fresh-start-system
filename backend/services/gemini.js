@@ -3,7 +3,8 @@ import dotenv from 'dotenv';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getConversationHistory, addToConversationHistory, formatHistoryForGemini, clearConversationHistory } from './conversationHistory.js';
+import { getConversationHistory, addToConversationHistory, formatHistoryForGemini, clearConversationHistory as clearHistoryForContact } from './conversationHistory.js';
+import { getAllItemsForAI } from './localStorageService.js'; // Import function to get items
 
 // Load environment variables
 dotenv.config();
@@ -12,525 +13,355 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Path for AI configuration file
+const aiConfigPath = path.join(__dirname, '..', 'data', 'ai_config.json'); // Renamed for clarity
+fs.ensureDirSync(path.join(__dirname, '..', 'data'));
+
 // Default configuration
-let defaultConfig = {
-  enabled: true,
-  apiKey: process.env.GEMINI_API_KEY || '',
-  model: 'gemini-2.0-flash', // Only using gemini-2.0-flash model
+const defaultConfig = {
+  enabled: true, // Global AI enabled flag (controls Gemini if it's active provider)
+  activeAIProvider: 'gemini', // Default active provider
+  
+  // Global instructions (fallback)
+  instructions: 'Kamu adalah asisten AI yang membantu. Selalu jawab dalam bahasa Indonesia.',
+
+  // Gemini specific
+  model: 'gemini-2.0-flash', // This 'model' field is for Gemini when it's active
+  geminiSpecificInstructions: '', 
+  
+  // OpenAI specific
+  openaiModel: 'gpt-3.5-turbo',
+  openaiSpecificInstructions: '',
+  openaiApiKeySet: !!process.env.OPENAI_API_KEY,
+
+  // Groq specific
+  groqModel: 'llama3-8b-8192',
+  groqSpecificInstructions: '',
+  groqApiKeySet: !!process.env.GROQ_API_KEY,
+
+  // Common AI settings (can be overridden per provider if needed)
   temperature: 0.7,
-  topK: 40,
-  topP: 0.95,
-  maxOutputTokens: 2048,
-  // Default system instructions - can be easily modified
-  instructions: 'Kamu adalah asisten AI yang sangat cerdas. Selalu menjawab pertanyaan dengan bahasa Indonesia yang baik dan benar. Jawab pertanyaan dengan jelas dan informatif. Gunakan bahasa yang sopan dan ramah. Berikan jawaban yang akurat dan bermanfaat. Jika kamu tidak tahu jawabannya, katakan dengan jujur bahwa kamu tidak tahu. Jangan memberikan informasi yang salah.',
-  history: []
+  topK: 40, // Relevant for Gemini
+  topP: 0.95, // Relevant for Gemini
+  maxOutputTokens: 2048, // Relevant for Gemini
+
+  // Deprecated/Unused by this centralized config directly for WhatsApp auto-reply logic
+  autoReplyEnabled: false, 
+  autoReplyTrigger: '!ai',
+  customModels: [], // Potentially for future use if models can be added dynamically
+  history: [], // Global history, likely unused if per-contact history is primary
 };
 
-// Always prioritize API key from environment variable
-if (process.env.GEMINI_API_KEY) {
-  console.log('Using API key from environment variable (.env file)');
-  defaultConfig.apiKey = process.env.GEMINI_API_KEY;
-  const maskedKey = process.env.GEMINI_API_KEY.substring(0, 4) + '...' +
-                   process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4);
-  console.log('API key from .env (masked):', maskedKey);
-  console.log('API key length:', process.env.GEMINI_API_KEY.length);
-}
-
-// Try to load config from file for backward compatibility, but don't use the API key
-try {
-  const configPath = path.join(__dirname, '..', 'config.json');
-  if (fs.existsSync(configPath)) {
-    const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    if (fileConfig.geminiApiKey && !process.env.GEMINI_API_KEY) {
-      console.log('WARNING: API key found in config.json file, but it will be ignored.');
-      console.log('Please set the GEMINI_API_KEY in your .env file instead.');
-    }
-  }
-} catch (error) {
-  console.error('Error loading config file:', error);
-}
-
-// Current configuration in memory
-let currentConfig = { ...defaultConfig };
-
-// Initialize Gemini API client
-let genAI = null;
-let model = null;
-
-// Get current configuration
-export const getConfig = () => {
-  return currentConfig;
-};
-
-// Update configuration
-export const updateConfig = async (newConfig) => {
+// Function to load AI configuration from file
+const loadAiConfigFromFile = () => {
   try {
-    // Create a safe copy of the new config
-    const safeNewConfig = { ...newConfig };
-
-    // Remove model from newConfig to ensure we always use gemini-2.0-flash
-    if (safeNewConfig.model) {
-      delete safeNewConfig.model;
+    if (fs.existsSync(aiConfigPath)) {
+      const fileConfig = fs.readJsonSync(aiConfigPath);
+      // Merge with default to ensure all keys exist, prioritizing fileConfig
+      const loadedConfig = { 
+        ...defaultConfig, 
+        ...fileConfig,
+        // Ensure API key statuses are always fresh from .env
+        openaiApiKeySet: !!process.env.OPENAI_API_KEY,
+        groqApiKeySet: !!process.env.GROQ_API_KEY,
+      };
+      // Remove Gemini API key if it was somehow saved (should only be from .env)
+      delete loadedConfig.apiKey; 
+      console.log('AI configuration loaded from ai_config.json. Current "enabled" state:', loadedConfig.enabled);
+      return loadedConfig;
     }
-
-    // IMPORTANT: Never update the API key from frontend requests
-    // Always use the API key from the .env file
-    if (safeNewConfig.apiKey) {
-      console.log('API key update attempted from frontend. Ignoring and using .env value instead.');
-      delete safeNewConfig.apiKey;
-    }
-
-    // Always ensure we're using the API key from environment variable
-    if (process.env.GEMINI_API_KEY) {
-      safeNewConfig.apiKey = process.env.GEMINI_API_KEY;
-    }
-
-    // Update current config with new values
-    const updatedConfig = { ...currentConfig, ...safeNewConfig };
-
-    // Save to memory
-    currentConfig = updatedConfig;
-
-    // Re-initialize Gemini with the current API key
-    initGemini();
-
-    return currentConfig;
   } catch (error) {
-    console.error('Error updating Gemini config:', error);
+    console.error('Error loading ai_config.json:', error);
+  }
+  console.log('ai_config.json not found, using default AI configuration. Default "enabled" state:', defaultConfig.enabled);
+  return { 
+    ...defaultConfig,
+    openaiApiKeySet: !!process.env.OPENAI_API_KEY,
+    groqApiKeySet: !!process.env.GROQ_API_KEY,
+  };
+};
+
+// Function to save AI configuration to file
+const saveAiConfigToFile = (configToSave) => {
+  try {
+    // Destructure to remove keys that should not be saved or are derived from .env
+    const { apiKey, openaiApiKeySet, groqApiKeySet, ...savableConfig } = configToSave;
+    fs.writeJsonSync(aiConfigPath, savableConfig, { spaces: 2 });
+    console.log('AI configuration saved to ai_config.json. Saved "enabled" state:', savableConfig.enabled);
+  } catch (error) {
+    console.error('Error saving ai_config.json:', error);
+  }
+};
+
+let currentConfig = loadAiConfigFromFile();
+// Gemini API key is always from .env, not stored in the JSON file
+// The 'apiKey' field in currentConfig will be for Gemini if it's used directly by Gemini service
+currentConfig.apiKey = process.env.GEMINI_API_KEY || '';
+
+
+if (process.env.GEMINI_API_KEY) {
+  console.log('Using Gemini API key from environment variable (.env file)');
+} else {
+  console.warn('GEMINI_API_KEY not found in .env file. Gemini AI will not function correctly if selected as active provider.');
+}
+if (process.env.OPENAI_API_KEY) {
+  console.log('OpenAI API key found in .env file.');
+} else {
+  console.warn('OPENAI_API_KEY not found in .env file. OpenAI features will not function.');
+}
+if (process.env.GROQ_API_KEY) {
+  console.log('Groq API key found in .env file.');
+} else {
+  console.warn('GROQ_API_KEY not found in .env file. Groq features will not function.');
+}
+
+
+let genAI = null;
+let geminiChatModel = null; 
+
+export const getConfig = () => {
+  // Ensure API keys status and Gemini API key are up-to-date from .env
+  currentConfig.apiKey = process.env.GEMINI_API_KEY || ''; // For Gemini
+  currentConfig.openaiApiKeySet = !!process.env.OPENAI_API_KEY;
+  currentConfig.groqApiKeySet = !!process.env.GROQ_API_KEY;
+  // The 'model' field in the returned config should reflect Gemini's model if it's the active one,
+  // or be a generic placeholder. For Gemini operations, 'gemini-2.0-flash' is forced.
+  console.log('[getConfig] Returning AI config. "enabled" state:', currentConfig.enabled);
+  return { ...currentConfig, model: 'gemini-2.0-flash' }; // 'model' here is specific to Gemini's part of the config
+};
+
+export const updateConfig = async (newConfigPartial) => {
+  try {
+    console.log('[updateConfig] Received partial update:', newConfigPartial);
+    // Exclude API keys from frontend updates, they are .env only
+    const { apiKey, openaiApiKey, groqApiKey, ...frontendConfig } = newConfigPartial; 
+
+    const updatedConfig = { 
+      ...currentConfig, 
+      ...frontendConfig, 
+      apiKey: process.env.GEMINI_API_KEY || '', // Gemini API key from .env
+      openaiApiKeySet: !!process.env.OPENAI_API_KEY, // Refresh status
+      groqApiKeySet: !!process.env.GROQ_API_KEY,     // Refresh status
+    };
+
+    if (newConfigPartial.hasOwnProperty('enabled')) {
+      console.log(`[updateConfig] Explicitly setting 'enabled' to: ${newConfigPartial.enabled}`);
+      updatedConfig.enabled = newConfigPartial.enabled;
+    }
+    
+    currentConfig = updatedConfig;
+    console.log('[updateConfig] currentConfig before save. "enabled" state:', currentConfig.enabled);
+    saveAiConfigToFile(currentConfig);
+    console.log('[updateConfig] currentConfig after save. "enabled" state:', currentConfig.enabled);
+
+
+    // Re-initialize Gemini if it's the active provider and its key is set
+    if (currentConfig.apiKey && currentConfig.activeAIProvider === 'gemini') {
+      initGemini(); 
+    } else if (currentConfig.activeAIProvider === 'gemini') {
+      geminiChatModel = null; // Nullify if Gemini is active but no key
+    }
+    // OpenAI and Groq clients are initialized within their respective services based on .env keys.
+    
+    return getConfig(); // Return the refreshed full config
+  } catch (error) {
+    console.error('Error updating AI config:', error);
     throw error;
   }
 };
 
-// Initialize Gemini API client
 const initGemini = () => {
-  const config = getConfig();
-
-  // FORCE ENABLE for testing
-  config.enabled = true;
-
+  // Use the 'model' field from currentConfig which is specific to Gemini ('gemini-2.0-flash')
+  const geminiModelForInit = currentConfig.model || 'gemini-2.0-flash';
   console.log('Initializing Gemini API client...');
-  console.log('FORCE ENABLED Gemini for initialization');
-  console.log('Gemini config - enabled:', config.enabled);
-  console.log('Gemini config - has API key:', !!config.apiKey);
+  console.log('Gemini config - Model TO BE USED (FORCED for Gemini):', geminiModelForInit); 
+  console.log('Gemini config - Global AI Enabled state from currentConfig:', currentConfig.enabled);
 
-  if (config.apiKey) {
-    console.log('API key length:', config.apiKey.length);
-    console.log('API key first 5 chars:', config.apiKey.substring(0, 5));
+  if (!currentConfig.apiKey) { // Checks Gemini API key from .env
+    console.error('No API key configured for Gemini in .env.');
+    geminiChatModel = null; return false;
   }
-
-  // Check if API key is available
-  if (!config.apiKey) {
-    console.error('No API key configured for Gemini');
-    return false;
-  }
-
   try {
-    // Clean API key (remove whitespace and quotes)
-    const cleanApiKey = config.apiKey.trim().replace(/^["']|["']$/g, '').replace(/\s/g, '');
-
-    console.log('Using cleaned API key:', cleanApiKey.substring(0, 5) + '..._Key');
-    console.log('Cleaned API key length:', cleanApiKey.length);
-
-    // Check if API key is valid format
-    if (cleanApiKey.length < 30) {
-      console.error('API key appears to be too short, might be invalid');
+    const cleanApiKey = currentConfig.apiKey.trim().replace(/^["']|["']$/g, '').replace(/\s/g, '');
+    if (cleanApiKey.length < 30 || cleanApiKey.includes('your-') || cleanApiKey.includes('example')) {
+      console.error('Gemini API key in .env appears to be a placeholder or invalid.');
+      geminiChatModel = null; return false;
     }
-
-    if (cleanApiKey.includes('your-') || cleanApiKey.includes('example')) {
-      console.error('API key appears to be a placeholder, not a real key');
-      return false;
-    }
-
-    // Initialize the API client
-    console.log('Creating GoogleGenerativeAI instance...');
     genAI = new GoogleGenerativeAI(cleanApiKey);
-
-    // Initialize the model - always use gemini-1.5-flash for better compatibility
-    console.log('Initializing Gemini model: gemini-1.5-flash');
-    model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash', // Use gemini-1.5-flash for better compatibility
+    geminiChatModel = genAI.getGenerativeModel({ 
+      model: geminiModelForInit, 
       generationConfig: {
-        temperature: config.temperature,
-        topK: config.topK,
-        topP: config.topP,
-        maxOutputTokens: config.maxOutputTokens,
+        temperature: currentConfig.temperature, 
+        topK: currentConfig.topK, 
+        topP: currentConfig.topP, 
+        maxOutputTokens: currentConfig.maxOutputTokens,
       },
     });
-
-    console.log('Gemini model initialized successfully');
+    console.log(`Gemini model (${geminiModelForInit}) initialization attempted.`);
     return true;
   } catch (error) {
-    console.error('Error initializing Gemini API client:', error);
-    console.error('Error details:', error.stack);
-    return false;
+    console.error(`Error initializing Gemini API client with FORCED model ${geminiModelForInit}:`, error);
+    geminiChatModel = null; return false;
   }
 };
 
-// Prepare chat history for Gemini API
 const prepareHistory = (history = []) => {
   if (!history || !Array.isArray(history) || history.length === 0) return [];
-
-  // Convert our history format to Gemini's format
   return history.map(item => ({
     role: item.role === 'user' ? 'user' : 'model',
     parts: [{ text: item.content }]
   }));
 };
 
-// Get conversation history for a specific contact
 export const getContactHistory = (contactId) => {
   if (!contactId) return [];
   return getConversationHistory(contactId);
 };
 
-// Clear conversation history for a specific contact
-export const clearContactHistory = (contactId) => {
+export const clearConversationHistory = (contactId) => { 
   if (!contactId) return false;
-  return clearConversationHistory(contactId);
+  return clearHistoryForContact(contactId); 
 };
 
-// Format system instructions with user prompt
-const formatPromptWithInstructions = (systemInstructions, userPrompt) => {
-  // Clean and validate inputs
-  const cleanInstructions = (systemInstructions || '').trim();
-  const cleanPrompt = (userPrompt || '').trim();
-
-  // If no system instructions, just return the user prompt
-  if (!cleanInstructions) return cleanPrompt;
-
-  // Format with system instructions first, then user prompt
-  return `${cleanInstructions}\n\nUser: ${cleanPrompt}`;
-};
-
-// Generate response
 export const generateResponse = async (prompt, history = []) => {
-  console.log('Generating Gemini response for prompt:', prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''));
-  console.log('History length:', history.length);
+  // This function is now specifically for Gemini, using its forced model.
+  const geminiEffectiveModel = 'gemini-2.0-flash';
+  console.log('Generating Gemini response with FORCED model:', geminiEffectiveModel);
 
-  // FORCE ENABLE for testing
-  const config = getConfig();
-  config.enabled = true;
-  console.log('FORCE ENABLED Gemini for response generation');
-  console.log('Gemini config for response generation - enabled:', config.enabled);
-  console.log('Has API key:', !!config.apiKey);
-
-  if (config.apiKey) {
-    console.log('API key length:', config.apiKey.length);
-    console.log('API key first 5 chars:', config.apiKey.substring(0, 5));
+  if (!currentConfig.enabled) return { status: false, message: 'Global AI integration is disabled in settings.' };
+  if (currentConfig.activeAIProvider !== 'gemini') return { status: false, message: 'Gemini is not the active AI provider.'};
+  
+  if (!currentConfig.apiKey || currentConfig.apiKey.includes('Example') || currentConfig.apiKey.includes('your-') || currentConfig.apiKey.length < 30) {
+    return { status: false, message: 'Invalid or missing Gemini API key in .env', fallbackResponse: "Integrasi Gemini AI tidak aktif karena API key tidak valid atau tidak diset di .env." };
   }
 
-  if (!config.enabled) {
-    console.log('Gemini integration is disabled in config');
-    return { error: 'Gemini integration is disabled' };
-  }
-
-  // Check if API key is a placeholder or example key
-  if (config.apiKey.includes('Example') || config.apiKey.includes('your-') || config.apiKey.length < 30) {
-    console.log('Invalid API key detected - using placeholder or example key');
-    return {
-      error: 'Invalid Gemini API key. Please replace the example API key in .env file with your actual API key from Google AI Studio.',
-      fallbackResponse: "Untuk menggunakan Gemini, Anda perlu mendapatkan API key dari Google AI Studio dan menggantinya di file .env"
-    };
-  }
-
-  // Initialize if not already initialized
-  if (!model) {
-    console.log('Model not initialized, initializing now...');
-    const initialized = initGemini();
-    if (!initialized) {
-      console.log('Failed to initialize Gemini API');
-      return { error: 'Failed to initialize Gemini API' };
-    }
+  if (!geminiChatModel || (genAI && genAI.apiKey !== currentConfig.apiKey) || (geminiChatModel && geminiChatModel.model !== geminiEffectiveModel) ) {
+    const initialized = initGemini(); 
+    if (!initialized) return { status: false, message: `Failed to initialize Gemini API with model ${geminiEffectiveModel}.`, fallbackResponse: `Model AI Gemini "${geminiEffectiveModel}" tidak dapat diinisialisasi.` };
   }
 
   try {
-    console.log('Generating response for prompt:', prompt);
-    console.log('Using history with', history.length, 'messages');
+    const formattedHistory = prepareHistory(history); 
+    
+    let systemInstructions = (currentConfig.geminiSpecificInstructions && currentConfig.geminiSpecificInstructions.trim() !== '')
+                              ? currentConfig.geminiSpecificInstructions
+                              : (currentConfig.instructions || '').trim(); 
 
-    // Log history for debugging
-    if (history.length > 0) {
-      console.log('History preview:');
-      history.forEach((msg, i) => {
-        console.log(`  [${i}] ${msg.role}: ${msg.content.substring(0, 30)}...`);
-      });
+    // Fetch items data
+    const items = await getAllItemsForAI();
+    if (items.length > 0) {
+      const itemsContext = "\n\nBerikut adalah daftar produk/layanan yang tersedia:\n" +
+                           items.map(item => `- ${item.name}: ${item.description}${item.price ? ` (Harga: Rp${item.price.toLocaleString('id-ID')})` : ''} [Tipe: ${item.type}]`).join("\n");
+      systemInstructions += itemsContext;
+    } else {
+      systemInstructions += "\n\nSaat ini tidak ada informasi produk/layanan yang tersedia.";
     }
 
-    // Create a chat session with history
-    const formattedHistory = prepareHistory(history);
-    console.log(`Formatted ${formattedHistory.length} history items for Gemini API`);
 
-    // Create chat session with history and system instructions
-    const chatSession = model.startChat({
-      history: formattedHistory,
+    console.log('--- GEMINI: SYSTEM INSTRUCTION BEING USED (generateResponse) ---');
+    console.log(systemInstructions || 'No system instructions provided.');
+    console.log('-----------------------------------------------------------------');
+    
+    let finalUserPrompt = "";
+    if (systemInstructions) {
+      finalUserPrompt = `${systemInstructions}\n\nANDA TIDAK BOLEH MENGUNGKAPKAN BAHWA ANDA ADALAH MODEL AI ATAU PROGRAM KOMPUTER. Selalu pertahankan persona yang diinstruksikan.\n\nPengguna berkata: "${prompt}"\n\nJawablah sebagai persona tersebut dalam Bahasa Indonesia.`;
+    } else {
+      finalUserPrompt = `Pengguna berkata: "${prompt}"\n\nJawablah dalam Bahasa Indonesia.`;
+    }
+    
+    console.log('--- GEMINI: MODIFIED PROMPT (with UI instructions) ---');
+    console.log(finalUserPrompt.substring(0, 300) + '...'); 
+    console.log('-------------------------------------------------------------');
+
+    const chatSession = geminiChatModel.startChat({ 
+      history: formattedHistory, 
       generationConfig: {
-        temperature: config.temperature,
-        topK: config.topK,
-        topP: config.topP,
-        maxOutputTokens: config.maxOutputTokens,
+        temperature: currentConfig.temperature, 
+        topK: currentConfig.topK, 
+        topP: currentConfig.topP, 
+        maxOutputTokens: currentConfig.maxOutputTokens,
       },
     });
-
-    // Add system instructions as a preamble message if provided
-    let systemInstructions = (config.instructions || '').trim();
-    if (systemInstructions) {
-      console.log('Using system instructions');
-      // If we have no history, prepend system instructions to the prompt
-      if (history.length === 0) {
-        prompt = `${systemInstructions}\n\nUser: ${prompt}`;
-      }
-    }
-
-    // Send the message to the chat session
-    console.log('Sending message to Gemini chat session...');
-    const result = await chatSession.sendMessage(prompt);
-
-    // Extract the response text
+    
+    const result = await chatSession.sendMessage(finalUserPrompt); 
     const responseText = result.response.text();
-    console.log('Generated response:', responseText.substring(0, 100) + '...');
-
-    return {
-      text: responseText,
-      history: [...history,
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: responseText }
-      ]
-    };
+    
+    return { status: true, text: responseText, history: [...history, { role: 'user', content: prompt }, { role: 'assistant', content: responseText }] };
   } catch (error) {
-    console.error('Error generating response from Gemini:', error);
-    console.error('Error details:', error.stack);
-
-    // Check for API key errors
-    if (error.message && error.message.includes('API_KEY_INVALID')) {
-      return {
-        error: 'Invalid Gemini API key. Please replace the API key in .env file with a valid key from Google AI Studio.',
-        fallbackResponse: "Untuk menggunakan Gemini, Anda perlu mendapatkan API key yang valid dari Google AI Studio."
-      };
+    console.error(`Error generating response from Gemini with model ${geminiEffectiveModel}:`, error);
+    if (error.message && error.message.includes('API_KEY_INVALID')) return { status: false, error: 'Invalid Gemini API key.', fallbackResponse: "API key Gemini tidak valid." };
+    if (error.message && (error.message.toLowerCase().includes('model not found') || error.message.toLowerCase().includes('could not find model'))) {
+       return { status: false, error: `Model Gemini "${geminiEffectiveModel}" tidak ditemukan.`, fallbackResponse: `Model AI Gemini "${geminiEffectiveModel}" tidak tersedia.` };
     }
-
-    return {
-      error: error.message || 'Failed to generate response',
-      fallbackResponse: "Maaf, saya sedang mengalami kesulitan teknis. Bisa Anda ulangi pertanyaannya?"
-    };
+    return { status: false, error: error.message || 'Failed to generate response', fallbackResponse: "Maaf, terjadi kesalahan teknis." };
   }
 };
 
-// Validate API key
-export const validateApiKey = async (apiKey) => {
-  console.log('Validating API key...');
-
+export const validateApiKey = async (apiKey) => { 
+  // This validation is for a key provided for testing, not the .env key.
+  // The actual operations will use the .env key.
+  console.log('Validating provided API key for Gemini (note: .env key is used for operations)...');
   if (!apiKey || apiKey.trim() === '') {
-    console.log('API key is empty or null');
-    return {
-      valid: false,
-      message: 'API key is required'
-    };
+    return { valid: false, message: 'API key is required for validation test' };
   }
-
-  console.log('API key length:', apiKey.length);
-  console.log('API key first 5 chars:', apiKey.substring(0, 5));
-
   try {
-    // Clean API key
     const cleanApiKey = apiKey.trim().replace(/^["']|["']$/g, '').replace(/\s/g, '');
-    console.log('Cleaned API key length:', cleanApiKey.length);
-    console.log('Cleaned API key first 5 chars:', cleanApiKey.substring(0, 5));
-
-    // Check if API key is valid format
-    if (cleanApiKey.length < 30) {
-      console.warn('API key appears to be too short, might be invalid');
-    }
-
-    if (cleanApiKey.includes('your-') || cleanApiKey.includes('example')) {
-      console.error('API key appears to be a placeholder, not a real key');
-      return {
-        valid: false,
-        message: 'API key appears to be a placeholder, not a real key'
-      };
-    }
-
-    console.log('Creating temporary GoogleGenerativeAI instance for validation...');
-    // Create a temporary API client
     const tempGenAI = new GoogleGenerativeAI(cleanApiKey);
-
-    console.log('Creating validation model with gemini-2.0-flash...');
-    // Use gemini-2.0-flash model for validation
-    const validationModel = tempGenAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        temperature: 0.1,
-        topP: 0.8,
-        topK: 16,
-        maxOutputTokens: 32,
-      }
-    });
-
-    console.log('Sending validation prompt to Gemini...');
-    // Send a simple validation prompt
-    const validationPrompt = 'Say "valid" if you can read this message.';
-    const result = await validationModel.generateContent(validationPrompt);
+    const validationModel = tempGenAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await validationModel.generateContent('Say "valid" if you can read this message.');
     const text = result.response.text().toLowerCase();
-    console.log('Validation response:', text);
-
-    // Check if the response contains "valid"
     const isValid = text.includes('valid');
-    console.log('API key validation result:', isValid ? 'VALID' : 'INVALID');
-
-    if (isValid) {
-      console.log('API key is valid, but not updating configuration...');
-      console.log('API keys can only be set via the .env file, not from the frontend');
-      // Do not update config with the validated API key
-      // await updateConfig({ apiKey: cleanApiKey });
-    }
-
     return {
       valid: isValid,
-      message: isValid ? 'API key is valid' : 'API key is invalid',
-      apiKey: cleanApiKey
+      message: isValid ? 'Provided Gemini API key is valid for testing (but .env key is used for actual operations)' : 'Provided Gemini API key is invalid for testing',
     };
   } catch (error) {
-    console.error('Error validating API key:', error);
-    console.error('Error details:', error.stack);
-
-    // Provide a specific error message based on the error
-    let errorMessage = 'Failed to validate API key';
-
-    if (error.message) {
-      console.log('Error message:', error.message);
-      if (error.message.includes('API_KEY_INVALID')) {
-        errorMessage = 'The API key is invalid. Please check it and try again.';
-      } else if (error.message.includes('PERMISSION_DENIED')) {
-        errorMessage = 'The API key does not have permission to access this resource.';
-      } else if (error.message.includes('QUOTA_EXCEEDED')) {
-        errorMessage = 'API quota exceeded. Please check your usage limits.';
-      }
+    console.error('Error validating provided Gemini API key:', error);
+    let errorMessage = 'Failed to validate provided Gemini API key';
+    if (error.message && error.message.includes('API_KEY_INVALID')) {
+      errorMessage = 'The provided Gemini API key is invalid.';
     }
-
-    console.log('Returning error message:', errorMessage);
-    return {
-      valid: false,
-      message: errorMessage,
-      details: error.message || ''
-    };
+    return { valid: false, message: errorMessage, details: error.message || '' };
   }
 };
 
-// Process messages from WhatsApp
 export const processMessage = async (message, sender = null) => {
-  console.log('Gemini processMessage called with message:', message.substring(0, 50) + (message.length > 50 ? '...' : ''));
-  console.log('Sender:', sender || 'Unknown');
-
-  // FORCE ENABLE for testing
-  const config = getConfig();
-  config.enabled = true;
-  console.log('FORCE ENABLED Gemini for testing');
-  console.log('Gemini config status - enabled:', config.enabled, 'has API key:', !!config.apiKey);
-
-  // Check if Gemini is enabled
-  if (!config.enabled) {
-    console.log('Gemini integration is disabled in config, skipping processing');
-    return null;
+  // This function is now specifically for Gemini when it's the active provider.
+  if (!currentConfig.enabled) {
+      console.log('Gemini processMessage: Global AI integration is disabled.');
+      return { status: true, text: null, message: 'Global AI disabled.' }; 
   }
-
-  if (!config.apiKey) {
-    console.log('No Gemini API key configured, skipping processing');
-    return null;
+  if (currentConfig.activeAIProvider !== 'gemini') {
+      console.log(`Gemini processMessage: Gemini is not the active AI provider (current: ${currentConfig.activeAIProvider}). Skipping.`);
+      return { status: true, text: null, message: 'Gemini not active provider.' };
+  }
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.includes('Example') || process.env.GEMINI_API_KEY.includes('your-') || process.env.GEMINI_API_KEY.length < 30) {
+    console.log('Gemini processMessage: Invalid or missing Gemini API key in .env.');
+    return { status: false, message: 'Invalid or missing Gemini API key in .env', fallbackResponse: "Integrasi Gemini AI tidak aktif karena API key tidak valid atau tidak diset di .env." };
   }
 
   try {
-    // Check if message is a command or question for AI
-    const isAI = isAIRequest(message);
-    console.log('Is AI request:', isAI);
+    let historyForGeneration = sender ? getConversationHistory(sender) : [];
+    if (sender) addToConversationHistory(sender, 'user', message);
+    
+    console.log(`(processMessage Gemini): Sending history (length: ${historyForGeneration.length}) to generateResponse for sender: ${sender}`);
+    const response = await generateResponse(message, historyForGeneration); 
 
-    if (!isAI) {
-      return null;
+    if (response.status) {
+      if (sender) addToConversationHistory(sender, 'assistant', response.text);
+      return { status: true, text: response.text };
+    } else {
+      return { status: false, message: response.error, fallbackResponse: response.fallbackResponse || 'Maaf, saya tidak dapat memproses permintaan Anda dengan Gemini saat ini.' };
     }
-
-    // Get conversation history for this sender if available
-    let history = [];
-    if (sender) {
-      console.log(`Getting conversation history for sender: ${sender}`);
-      history = getConversationHistory(sender);
-      console.log(`Retrieved ${history.length} previous messages from conversation history for ${sender}`);
-
-      if (history.length > 0) {
-        console.log('History preview:');
-        history.slice(-2).forEach((msg, i) => {
-          console.log(`  [${i}] ${msg.role}: ${msg.content.substring(0, 30)}...`);
-        });
-      }
-    }
-
-    // Add user message to history before generating response
-    if (sender) {
-      console.log(`Adding user message to history for sender: ${sender}`);
-      addToConversationHistory(sender, 'user', message);
-    }
-
-    console.log('Processing message with Gemini...');
-    // Generate response with conversation history
-    const response = await generateResponse(message, history);
-
-    if (response.error) {
-      console.error('Error generating response:', response.error);
-      return response.fallbackResponse || 'Maaf, saya tidak dapat memproses permintaan Anda saat ini.';
-    }
-
-    // Add assistant response to history
-    if (sender) {
-      console.log(`Adding assistant response to history for sender: ${sender}`);
-      addToConversationHistory(sender, 'assistant', response.text);
-    }
-
-    console.log('Gemini response generated successfully:', response.text.substring(0, 50) + (response.text.length > 50 ? '...' : ''));
-    return response.text;
   } catch (error) {
-    console.error('Error processing message with Gemini:', error);
-    console.error('Error details:', error.stack);
-    return 'Maaf, terjadi kesalahan saat memproses pesan Anda.';
+    console.error('Error in Gemini processMessage:', error);
+    return { status: false, message: error.message || 'An unexpected error occurred', fallbackResponse: 'Maaf, terjadi kesalahan dengan Gemini.' };
   }
 };
 
-// Check if a message is intended for AI
-const isAIRequest = (message) => {
-  console.log('Checking if message is an AI request:', message);
-
-  if (!message || typeof message !== 'string') {
-    console.log('Message is not a string, returning false');
-    return false;
-  }
-
-  // For testing purposes, process all messages with Gemini
-  console.log('Processing all messages with Gemini for testing');
-  return true;
-
-  /* Original implementation - commented out for testing
-  // Trim and lowercase the message
-  const normalizedMessage = message.trim().toLowerCase();
-
-  // Check for AI command prefixes
-  const aiPrefixes = ['ai ', '/ai ', '!ai ', '.ai ', 'ai: ', 'ai,'];
-  for (const prefix of aiPrefixes) {
-    if (normalizedMessage.startsWith(prefix)) {
-      return true;
-    }
-  }
-
-  // Check if message ends with a question mark
-  if (normalizedMessage.endsWith('?')) {
-    return true;
-  }
-
-  // Check if message contains question words
-  const questionWords = ['apa', 'siapa', 'kapan', 'dimana', 'mengapa', 'bagaimana', 'kenapa', 'gimana', 'tolong', 'bantu'];
-  for (const word of questionWords) {
-    if (normalizedMessage.includes(word)) {
-      return true;
-    }
-  }
-
-  return false;
-  */
-};
-
-// Initialize on load
-initGemini();
+// Initialize Gemini if API key is present and it's the active provider (or no provider is set, defaulting to Gemini)
+if (process.env.GEMINI_API_KEY && (currentConfig.activeAIProvider === 'gemini' || !currentConfig.activeAIProvider)) {
+  initGemini();
+} else if (!process.env.GEMINI_API_KEY && (currentConfig.activeAIProvider === 'gemini' || !currentConfig.activeAIProvider)) {
+  console.log("Gemini API key not found in .env. Gemini features will require it to be set for initialization if Gemini is the active provider.");
+}

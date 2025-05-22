@@ -31,6 +31,9 @@ dist-ssr
 # Configuration with sensitive data
 backend/config.json
 backend/logs/
+# Keep example files
+!backend/*.json.example
+!backend/data/examples/*.json.example
 
 # WhatsApp session data
 backend/sessions/
@@ -48,10 +51,15 @@ backend/sessions/
 **/auth_tokens.json
 **/api_keys.json
 **/secrets.json
+**/conversation_history.json
+backend/data/*.json
+# Exclude example files from gitignore
+!backend/data/examples/
 
 # WhatsApp data
 backend/uploads/
 backend/media/
+backend/logs/
 **/chat_history/
 **/message_queue.json
 

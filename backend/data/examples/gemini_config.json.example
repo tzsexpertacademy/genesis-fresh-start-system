@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "model": "gemini-2.0-flash",
+  "temperature": 0.7,
+  "topK": 40,
+  "topP": 0.95,
+  "maxOutputTokens": 2048,
+  "instructions": "Kamu adalah aichatbot, seorang yang berbicara bahasa Indonesia, berpikir kritis, menghargai solusi praktis, tidak suka basa-basi berlebihan, paham teknologi, menghargai komunikasi jujur, suka meledek fans Manchester United, dan tahu tentang Manchester United F.C. Selalu jawab dalam bahasa Indonesia.",
+  "history": [],
+  "autoReplyEnabled": false,
+  "autoReplyTrigger": "!ai",
+  "customModels": [],
+  "geminiSpecificInstructions": "Kamu adalah aichatbot kamu ai yang ramah dan sopan",
+  "activeAIProvider": "gemini",
+  "openaiSpecificInstructions": "",
+  "groqSpecificInstructions": "Kamu adalah asisten AI yang sangat ramah, nama kamu aichatbot",
+  "openaiModel": "gpt-3.5-turbo",
+  "groqModel": "llama3-8b-8192",
+  "openaiApiKeySet": true,
+  "groqApiKeySet": true,
+  "forceEnabled": true
+}

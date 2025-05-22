@@ -59,3 +59,26 @@ export type BackendConnectionStatus = 'online' | 'offline' | 'unknown';
 
 // View mode for inbox
 export type InboxViewMode = 'contacts' | 'chat';
+
+// Item (Product/Service) type
+export interface Item {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'product' | 'service' | 'other'; // Example types
+  price?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Scheduled Message type
+export interface ScheduledMessage {
+  id: string;
+  number: string;
+  message: string;
+  scheduleTime: string; // ISO string format
+  status: 'scheduled' | 'sent' | 'failed';
+  error?: string;
+  created_at: string;
+  updated_at: string;
+}

@@ -5,7 +5,7 @@ import {
   processMessage,
   validateApiKey,
   getContactHistory,
-  clearContactHistory
+  clearConversationHistory // Corrected import name
 } from '../services/gemini.js';
 
 // Get Gemini configuration
@@ -205,7 +205,7 @@ export const clearGeminiHistory = async (req, res) => {
     }
 
     console.log(`Clearing conversation history for contact: ${contactId}`);
-    const success = clearContactHistory(contactId);
+    const success = clearConversationHistory(contactId); // Use corrected function name
 
     if (success) {
       res.json({

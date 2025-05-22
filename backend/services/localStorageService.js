@@ -14,6 +14,7 @@ fs.ensureDirSync(dataDir);
 // File paths
 const contactsFile = path.join(dataDir, 'contacts.json');
 const categoriesFile = path.join(dataDir, 'categories.json');
+const itemsFile = path.join(dataDir, 'items.json'); // New file for items
 
 // Ensure files exist
 if (!fs.existsSync(contactsFile)) {
@@ -22,6 +23,10 @@ if (!fs.existsSync(contactsFile)) {
 
 if (!fs.existsSync(categoriesFile)) {
   fs.writeJsonSync(categoriesFile, [], { spaces: 2 });
+}
+
+if (!fs.existsSync(itemsFile)) {
+  fs.writeJsonSync(itemsFile, [], { spaces: 2 }); // Initialize items file
 }
 
 // Contact functions
@@ -289,5 +294,92 @@ export const deleteCategory = async (id) => {
   } catch (error) {
     console.error('Error deleting category:', error);
     return { data: null, error };
+  }
+};
+
+// Item (Product/Service) functions
+export const getItems = async () => {
+  try {
+    const items = await fs.readJson(itemsFile);
+    return { data: items, error: null };
+  } catch (error) {
+    console.error('Error reading items:', error);
+    return { data: [], error };
+  }
+};
+
+export const getItem = async (id) => {
+  try {
+    const items = await fs.readJson(itemsFile);
+    const item = items.find(i => i.id === id);
+    return { data: item || null, error: null };
+  } catch (error) {
+    console.error('Error reading item:', error);
+    return { data: null, error };
+  }
+};
+
+export const createItem = async (itemData) => {
+  try {
+    const items = await fs.readJson(itemsFile);
+    const newItem = {
+      id: uuidv4(),
+      ...itemData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    items.push(newItem);
+    await fs.writeJson(itemsFile, items, { spaces: 2 });
+    return { data: newItem, error: null };
+  } catch (error) {
+    console.error('Error creating item:', error);
+    return { data: null, error };
+  }
+};
+
+export const updateItem = async (id, itemData) => {
+  try {
+    const items = await fs.readJson(itemsFile);
+    const index = items.findIndex(i => i.id === id);
+    if (index === -1) {
+      return { data: null, error: { message: 'Item not found' } };
+    }
+    const updatedItem = {
+      ...items[index],
+      ...itemData,
+      updated_at: new Date().toISOString()
+    };
+    items[index] = updatedItem;
+    await fs.writeJson(itemsFile, items, { spaces: 2 });
+    return { data: updatedItem, error: null };
+  } catch (error) {
+    console.error('Error updating item:', error);
+    return { data: null, error };
+  }
+};
+
+export const deleteItem = async (id) => {
+  try {
+    const items = await fs.readJson(itemsFile);
+    const filteredItems = items.filter(i => i.id !== id);
+    if (filteredItems.length === items.length) {
+      return { data: null, error: { message: 'Item not found' } };
+    }
+    await fs.writeJson(itemsFile, filteredItems, { spaces: 2 });
+    return { data: { success: true }, error: null };
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    return { data: null, error };
+  }
+};
+
+// Function for AI services to get all items
+export const getAllItemsForAI = async () => {
+  try {
+    const items = await fs.readJson(itemsFile);
+    return items; // Return the raw array of items
+  } catch (error) {
+    console.error('Error reading items for AI:', error);
+    return []; // Return empty array on error
   }
 };

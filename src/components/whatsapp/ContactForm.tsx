@@ -236,14 +236,14 @@ const ContactForm = ({ contact, categories, onClose, onSuccess }: ContactFormPro
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-stroke py-2 px-6 text-black hover:bg-gray-100 dark:border-strokedark dark:text-white dark:hover:bg-meta-4"
+              className="rounded-lg border border-stroke py-2 px-6 text-black hover:bg-gray-100 dark:border-strokedark dark:text-white dark:hover:bg-gray-700"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-primary py-2 px-6 text-white hover:bg-opacity-90 disabled:bg-opacity-70"
+              className="rounded-lg bg-brand-500 py-2 px-6 text-white hover:bg-brand-600 disabled:opacity-70"
               disabled={loading}
             >
               {loading ? (
