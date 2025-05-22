@@ -218,7 +218,7 @@ When uploading to GitHub, make sure to:
 
 ## Support me
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y81F6AUQ)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://trakteer.id/orifin?quantity=1)
 
 ## License
 
