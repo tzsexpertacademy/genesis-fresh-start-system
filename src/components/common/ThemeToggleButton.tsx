@@ -1,8 +1,8 @@
-import React, { useContext } from 'react';
-import { ThemeContext } from '../../context/ThemeContext';
+import React from 'react';
+import { useTheme } from '../../context/ThemeContext';
 
 export const ThemeToggleButton: React.FC = () => {
-  const { theme, setTheme } = useContext(ThemeContext);
+  const { theme, setTheme } = useTheme();
 
   const handleThemeToggle = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');

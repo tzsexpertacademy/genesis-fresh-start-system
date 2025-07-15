@@ -28,8 +28,8 @@ export const useAuth = () => useContext(AuthContext);
 
 // Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any>(dummyUser);
-  const [profile, setProfile] = useState<any>(dummyUser);
+  const [user] = useState<any>(dummyUser);
+  const [profile] = useState<any>(dummyUser);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
