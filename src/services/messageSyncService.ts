@@ -6,7 +6,7 @@
  * the backend, WebSocket events, and the UI components.
  */
 
-import { InboxMessage, Contact } from '../types';
+import { InboxMessage, Contact } from '../types/whatsapp';
 
 // Define event types
 type EventCallback = (data: any) => void;

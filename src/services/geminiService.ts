@@ -23,7 +23,7 @@ const RESPONSE_CACHE_TTL = 300000;
 let lastCachedConfigLogTime = 0;
 const LOG_INTERVAL = 60000; // Only log once per minute
 // Track how many times we've logged about cached config
-let cachedConfigLogCount = 0;
+// let cachedConfigLogCount = 0; // Unused variable commented out
 
 // Get Gemini configuration with caching
 export const getGeminiConfig = async () => {
@@ -86,7 +86,7 @@ export const getGeminiConfig = async () => {
 
   try {
     // Reset the log counter when making a new request
-    cachedConfigLogCount = 0;
+    // cachedConfigLogCount = 0; // Variable commented out as unused
 
     // Make the API request with a longer cache TTL
     const response = await apiRequest('/gemini/config', {}, 10000, CONFIG_CACHE_TTL);

@@ -5,7 +5,7 @@
  * import websocketService from './websocketService';
  */
 
-import { InboxMessage } from '../types/whatsapp';
+// import { InboxMessage } from '../types/whatsapp'; // Unused import removed
 import websocketService from './websocketService';
 
 // Define the message event type for backward compatibility

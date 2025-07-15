@@ -178,7 +178,7 @@ const GeminiProviderSettings: React.FC = () => {
         {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-md dark:bg-red-500/10 dark:text-red-400">{error}</div>}
         {testResult && <div className={`mb-4 p-3 rounded-md ${testResult.success ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400'}`}>{testResult.message}</div>}
 
-        <form onSubmit={handleSave} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
           {/* API Key Status section removed */}
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             The Gemini API Key (<code>GEMINI_API_KEY</code>) must be configured in the backend's <code>.env</code> file.
