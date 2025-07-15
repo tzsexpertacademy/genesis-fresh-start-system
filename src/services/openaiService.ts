@@ -1,35 +1,27 @@
-import { apiRequest } from './whatsappService'; // Reusing the apiRequest from whatsappService
+import { stateManager } from '../utils/stateManager';
 
-interface OpenAIConfigResponse {
-  status: boolean;
-  message: string;
-  data?: {
-    config: {
-      apiKeySet: boolean;
-      model: string;
-    };
-  };
-}
+// Base service for OpenAI interactions
+export const openaiService = {
+  async sendMessage(message: string): Promise<string> {
+    try {
+      // Mock response for now
+      return `OpenAI Response: ${message}`;
+    } catch (error) {
+      console.error('OpenAI service error:', error);
+      throw error;
+    }
+  },
 
-interface OpenAIGenerateResponse {
-  status: boolean;
-  message: string;
-  data?: {
-    response: string;
-    history: Array<{ role: string; content: string }>;
-  };
-}
+  async chat(message: string): Promise<string> {
+    return this.sendMessage(message);
+  },
 
-export const getOpenAIConfig = async (): Promise<OpenAIConfigResponse> => {
-  return apiRequest('/openai/config');
-};
+  // Configuration methods
+  getConfig(): any {
+    return stateManager.get('openai_config') || {};
+  },
 
-export const generateOpenAIResponse = async (
-  prompt: string,
-  history: Array<{ role: string; content: string }> = []
-): Promise<OpenAIGenerateResponse> => {
-  return apiRequest('/openai/generate', {
-    method: 'POST',
-    body: JSON.stringify({ prompt, history }),
-  });
+  setConfig(config: any): void {
+    stateManager.set('openai_config', config);
+  }
 };

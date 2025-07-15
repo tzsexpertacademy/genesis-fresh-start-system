@@ -1,35 +1,27 @@
-import { apiRequest } from './whatsappService'; // Reusing the apiRequest from whatsappService
+import { stateManager } from '../utils/stateManager';
 
-interface GroqConfigResponse {
-  status: boolean;
-  message: string;
-  data?: {
-    config: {
-      apiKeySet: boolean;
-      model: string;
-    };
-  };
-}
+// Base service for Groq interactions
+export const groqService = {
+  async sendMessage(message: string): Promise<string> {
+    try {
+      // Mock response for now
+      return `Groq Response: ${message}`;
+    } catch (error) {
+      console.error('Groq service error:', error);
+      throw error;
+    }
+  },
 
-interface GroqGenerateResponse {
-  status: boolean;
-  message: string;
-  data?: {
-    response: string;
-    history: Array<{ role: string; content: string }>;
-  };
-}
+  async chat(message: string): Promise<string> {
+    return this.sendMessage(message);
+  },
 
-export const getGroqConfig = async (): Promise<GroqConfigResponse> => {
-  return apiRequest('/groq/config');
-};
+  // Configuration methods
+  getConfig(): any {
+    return stateManager.get('groq_config') || {};
+  },
 
-export const generateGroqResponse = async (
-  prompt: string,
-  history: Array<{ role: string; content: string }> = []
-): Promise<GroqGenerateResponse> => {
-  return apiRequest('/groq/generate', {
-    method: 'POST',
-    body: JSON.stringify({ prompt, history }),
-  });
+  setConfig(config: any): void {
+    stateManager.set('groq_config', config);
+  }
 };

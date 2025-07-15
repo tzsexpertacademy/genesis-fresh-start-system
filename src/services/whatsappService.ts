@@ -1,4 +1,4 @@
-import { InboxMessage, Contact } from '../types/whatsapp';
+import { InboxMessage } from '../types/whatsapp';
 
 // Comprehensive WhatsApp service with all needed exports
 export const whatsappService = {
