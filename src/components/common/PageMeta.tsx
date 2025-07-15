@@ -2,7 +2,7 @@ import { Helmet, HelmetProvider } from "react-helmet-async";
 
 interface PageMetaProps {
   title: string;
-  description: string;
+  description?: string;
 }
 
 const PageMeta: React.FC<PageMetaProps> = ({ title, description }) => {

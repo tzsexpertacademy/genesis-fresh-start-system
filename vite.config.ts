@@ -17,6 +17,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    port: 8080,
     // Prevent caching during development
     hmr: {
       overlay: false, // Disable the HMR overlay to prevent unwanted refreshes
