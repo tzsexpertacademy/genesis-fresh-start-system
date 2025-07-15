@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo } from 'react';
 import { getGeminiConfig, updateGeminiConfig } from '../../services/geminiService'; // Using geminiService as the central AI config manager
 // import { testGroqConnection } from '../../services/groqService'; // Will need a test connection for Groq
 import ComponentCard from '../../components/common/ComponentCard';
-import stateManager from '../../utils/stateManager';
+import { stateManager } from '../../utils/stateManager';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 const PROMPT_CACHE_KEY = 'groqSpecificInstructions_cache';

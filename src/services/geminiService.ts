@@ -1,5 +1,12 @@
 import { stateManager } from '../utils/stateManager';
 
+// Service response type
+type ServiceResponse<T = any> = {
+  status: boolean;
+  data: T;
+  message?: string;
+};
+
 // Gemini service exports
 export const sendMessage = async (message: string): Promise<string> => {
   try {
@@ -22,20 +29,36 @@ export const setConfig = (config: any): void => {
   stateManager.set('gemini_config', config);
 };
 
-export const getGeminiConfig = (): any => {
-  return getConfig();
+export const getGeminiConfig = (): ServiceResponse<any> => {
+  return {
+    status: true,
+    data: getConfig()
+  };
 };
 
-export const updateGeminiConfig = (config: any): void => {
+export const updateGeminiConfig = (config: any): ServiceResponse<boolean> => {
   setConfig(config);
+  return {
+    status: true,
+    data: true,
+    message: 'Gemini config updated successfully'
+  };
 };
 
-export const testGeminiConnection = async (): Promise<boolean> => {
+export const testGeminiConnection = async (): Promise<ServiceResponse<boolean>> => {
   try {
     await sendMessage('test');
-    return true;
+    return {
+      status: true,
+      data: true,
+      message: 'Connection successful'
+    };
   } catch (error) {
-    return false;
+    return {
+      status: false,
+      data: false,
+      message: 'Connection failed'
+    };
   }
 };
 

@@ -1,8 +1,8 @@
 import { useEffect, useState, memo } from 'react';
 import { getConnectionStatus, logout } from '../../services/whatsappService';
 import ComponentCard from '../common/ComponentCard';
-import stateManager from '../../utils/stateManager';
-import transitionUtils from '../../utils/transitionUtils';
+import { stateManager } from '../../utils/stateManager';
+import { transitionUtils } from '../../utils/transitionUtils';
 
 interface StatusCardProps {
   onStatusChange?: (status: string) => void;
@@ -33,16 +33,16 @@ const StatusCard = ({ onStatusChange }: StatusCardProps) => {
       const response = await getConnectionStatus();
       if (response.status) {
         // Only update status if it's different to avoid unnecessary re-renders
-        if (response.data.status !== status) {
+        if (response.data !== status) {
           // If this is a significant status change, prevent animations
-          if (prevStatus === 'disconnected' || response.data.status === 'disconnected') {
+          if (prevStatus === 'disconnected' || response.data === 'disconnected') {
             transitionUtils.disableTransitions(500);
           }
 
-          setStatus(response.data.status);
+          setStatus(response.data);
 
           if (onStatusChange) {
-            onStatusChange(response.data.status);
+            onStatusChange(response.data);
           }
 
           // No need to re-enable transitions as they're automatically re-enabled after the timeout

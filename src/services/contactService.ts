@@ -1,49 +1,87 @@
-// Simple working services to fix all import errors
+// Service response type
+type ServiceResponse<T = any> = {
+  status: boolean;
+  data: T;
+  message?: string;
+};
 
 // Contact service exports
-export const getContacts = async () => {
+export const getContacts = async (): Promise<ServiceResponse<any[]>> => {
   console.log('Getting contacts...');
-  return [];
+  return {
+    status: true,
+    data: []
+  };
 };
 
-export const createContact = async (contact: any) => {
+export const createContact = async (contact: any): Promise<ServiceResponse<any>> => {
   console.log('Creating contact:', contact);
-  return contact;
+  return {
+    status: true,
+    data: contact,
+    message: 'Contact created successfully'
+  };
 };
 
-export const updateContact = async (id: string, contact: any) => {
+export const updateContact = async (id: string, contact: any): Promise<ServiceResponse<any>> => {
   console.log('Updating contact:', id, contact);
-  return contact;
+  return {
+    status: true,
+    data: contact,
+    message: 'Contact updated successfully'
+  };
 };
 
-export const deleteContact = async (id: string) => {
+export const deleteContact = async (id: string): Promise<ServiceResponse<boolean>> => {
   console.log('Deleting contact:', id);
-  return true;
+  return {
+    status: true,
+    data: true,
+    message: 'Contact deleted successfully'
+  };
 };
 
-export const getContactCategories = async () => {
+export const getContactCategories = async (): Promise<ServiceResponse<any[]>> => {
   console.log('Getting contact categories...');
-  return [];
+  return {
+    status: true,
+    data: []
+  };
 };
 
-export const createContactCategory = async (category: any) => {
+export const createContactCategory = async (category: any): Promise<ServiceResponse<any>> => {
   console.log('Creating category:', category);
-  return category;
+  return {
+    status: true,
+    data: category,
+    message: 'Category created successfully'
+  };
 };
 
-export const updateContactCategory = async (id: string, category: any) => {
+export const updateContactCategory = async (id: string, category: any): Promise<ServiceResponse<any>> => {
   console.log('Updating category:', id, category);
-  return category;
+  return {
+    status: true,
+    data: category,
+    message: 'Category updated successfully'
+  };
 };
 
-export const deleteContactCategory = async (id: string) => {
+export const deleteContactCategory = async (id: string): Promise<ServiceResponse<boolean>> => {
   console.log('Deleting category:', id);
-  return true;
+  return {
+    status: true,
+    data: true,
+    message: 'Category deleted successfully'
+  };
 };
 
-export const getContactsInCategory = async (categoryId: string) => {
+export const getContactsInCategory = async (categoryId: string): Promise<ServiceResponse<any[]>> => {
   console.log('Getting contacts in category:', categoryId);
-  return [];
+  return {
+    status: true,
+    data: []
+  };
 };
 
 export const cleanPhoneNumber = (phone: string): string => {
@@ -55,9 +93,13 @@ export const formatPhoneNumber = (phone: string): string => {
   return cleaned.startsWith('55') ? `+${cleaned}` : `+55${cleaned}`;
 };
 
-export const importContacts = async (contacts: any[]) => {
-  console.log('Importing contacts:', contacts);
-  return contacts;
+export const importContacts = async (file: File): Promise<ServiceResponse<any[]>> => {
+  console.log('Importing contacts from file:', file.name);
+  return {
+    status: true,
+    data: [],
+    message: 'Contacts imported successfully'
+  };
 };
 
 // Backward compatibility

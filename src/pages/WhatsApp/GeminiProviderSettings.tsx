@@ -1,7 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import { getGeminiConfig, updateGeminiConfig, testGeminiConnection } from '../../services/geminiService';
 import ComponentCard from '../../components/common/ComponentCard';
-import stateManager from '../../utils/stateManager';
+import { stateManager } from '../../utils/stateManager';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 const PROMPT_CACHE_KEY = 'geminiSpecificInstructions_cache'; // Specific cache for Gemini

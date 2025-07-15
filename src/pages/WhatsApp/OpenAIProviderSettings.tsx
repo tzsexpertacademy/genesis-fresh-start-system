@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo } from 'react';
 import { getGeminiConfig, updateGeminiConfig } from '../../services/geminiService'; // Using geminiService as the central AI config manager
 // import { testOpenAIConnection } from '../../services/openaiService'; // Placeholder for OpenAI test connection
 import ComponentCard from '../../components/common/ComponentCard';
-import stateManager from '../../utils/stateManager';
+import { stateManager } from '../../utils/stateManager';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 const PROMPT_CACHE_KEY = 'openaiSpecificInstructions_cache';
