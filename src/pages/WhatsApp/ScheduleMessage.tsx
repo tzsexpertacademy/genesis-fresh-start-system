@@ -29,8 +29,8 @@ const ScheduleMessage: React.FC = () => {
       try {
         const response = await getConnectionStatus();
         if (response.status) {
-          setStatus(response.data.status);
-          if (response.data.status === 'disconnected') {
+          setStatus(response.data);
+          if (response.data === 'disconnected') {
             navigate('/whatsapp/login');
           }
         }

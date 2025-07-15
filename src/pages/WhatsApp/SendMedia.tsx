@@ -24,10 +24,10 @@ const SendMedia = () => {
       try {
         const response = await getConnectionStatus();
         if (response.status) {
-          setStatus(response.data.status);
+          setStatus(response.data);
 
           // Redirect to login page if disconnected
-          if (response.data.status === 'disconnected') {
+          if (response.data === 'disconnected') {
             navigate('/whatsapp/login');
           }
         }
