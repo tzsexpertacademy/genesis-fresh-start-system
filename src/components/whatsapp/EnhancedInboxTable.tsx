@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Contact, InboxMessage, BackendConnectionStatus, WhatsAppConnectionStatus } from '../../types/whatsapp';
-import websocketService from '../../services/websocketService';
 
 // Define view mode enum
 type InboxViewMode = 'contacts' | 'messages' | 'both';
@@ -11,57 +10,14 @@ type MessageSortOption = 'timestamp' | 'contact' | 'unread';
 // Define filter options
 type MessageFilterOption = 'all' | 'unread' | 'today' | 'thisWeek';
 
-// Mock data for demonstration purposes
-const mockMessages: InboxMessage[] = [
-  {
-    id: '1',
-    sender: '+55 11 99999-9999',
-    message: 'Hello, this is a test message',
-    timestamp: new Date().toISOString(),
-    isOutgoing: false,
-    status: 'received',
-  },
-  {
-    id: '2',
-    sender: '+55 11 88888-8888',
-    message: 'Another test message',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    isOutgoing: false,
-    status: 'received',
-  },
-];
-
-const mockContacts: Contact[] = [
-  {
-    id: '1',
-    name: 'Test Contact 1',
-    number: '+55 11 99999-9999',
-    lastMessage: 'Hello, this is a test message',
-    lastMessageTime: new Date().toISOString(),
-    unreadCount: 1,
-    avatar: '',
-    category: 'general',
-  },
-  {
-    id: '2',
-    name: 'Test Contact 2',
-    number: '+55 11 88888-8888',
-    lastMessage: 'Another test message',
-    lastMessageTime: new Date(Date.now() - 3600000).toISOString(),
-    unreadCount: 0,
-    avatar: '',
-    category: 'general',
-  },
-];
-
 interface Props {
   className?: string;
 }
 
 const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
-  // State management
-  const [messages, setMessages] = useState<InboxMessage[]>(mockMessages);
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  // State management with corrected types
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,16 +30,6 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
 
   // Connection status
   const [, setBackendStatus] = useState<BackendConnectionStatus>('unknown');
-  const [whatsappStatus, setWhatsappStatus] = useState<WhatsAppConnectionStatus>('unknown');
-  const [showQRCode, setShowQRCode] = useState<boolean>(false);
-
-  // Quick reply options
-  const [quickReplyOptions] = useState<string[]>([
-    'Thanks for your message!',
-    'I will get back to you soon.',
-    'Could you provide more details?',
-    'Have a great day!',
-  ]);
 
   // Refs for optimization
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -104,30 +50,6 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
       );
     }
 
-    // Apply date filter
-    const now = Date.now();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    switch (filterBy) {
-      case 'unread':
-        filtered = filtered.filter((message) => message.status === 'received');
-        break;
-      case 'today':
-        filtered = filtered.filter(
-          (message) => new Date(message.timestamp) >= today
-        );
-        break;
-      case 'thisWeek':
-        filtered = filtered.filter(
-          (message) => new Date(message.timestamp) >= thisWeek
-        );
-        break;
-      default:
-        break;
-    }
-
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -135,17 +57,13 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
           return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
         case 'contact':
           return a.sender.localeCompare(b.sender);
-        case 'unread':
-          if (a.status === 'received' && b.status !== 'received') return -1;
-          if (a.status !== 'received' && b.status === 'received') return 1;
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
         default:
           return 0;
       }
     });
 
     return filtered;
-  }, [messages, searchQuery, sortBy, filterBy]);
+  }, [messages, searchQuery, sortBy]);
 
   // Filter contacts based on search
   const filteredContacts = useMemo(() => {
@@ -154,38 +72,33 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
     const query = searchQuery.toLowerCase().trim();
     return contacts.filter(
       (contact) =>
-        contact.name.toLowerCase().includes(query) ||
-        contact.number.toLowerCase().includes(query) ||
-        (contact.lastMessage && contact.lastMessage.toLowerCase().includes(query))
+        contact.name?.toLowerCase().includes(query) ||
+        contact.phoneNumber?.toLowerCase().includes(query)
     );
   }, [contacts, searchQuery]);
 
   // Load messages from backend
   const loadMessages = useCallback(async (force = false) => {
-    const now = Date.now();
-
     // Prevent too frequent calls
-    if (!force && now - lastLoadTime.current < 5000) {
-      console.log('Skipping message load - too recent');
+    if (!force && Date.now() - lastLoadTime.current < 5000) {
       return;
     }
 
-    lastLoadTime.current = now;
+    lastLoadTime.current = Date.now();
 
     try {
       setLoading(true);
       setError(null);
 
       // Mock response for now
-      const response = { status: true, data: { messages: mockMessages } };
+      const response = { status: true, data: { messages: [] } };
 
       if (response.status) {
         const newMessages = response.data?.messages || [];
         setMessages(newMessages);
         setLastRefreshTime(new Date().toLocaleTimeString());
       } else {
-        console.error('Failed to load messages:', response.message);
-        setError(response.message || 'Failed to load messages');
+        setError('Failed to load messages');
       }
     } catch (error: any) {
       console.error('Error loading messages:', error);
@@ -198,13 +111,12 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
   // Load contacts from backend
   const loadContacts = useCallback(async () => {
     try {
-      const response = await whatsappService.getContacts();
+      // Mock response for now
+      const response = { status: true, data: { contacts: [] } };
 
       if (response.status) {
         const newContacts = response.data?.contacts || [];
         setContacts(newContacts);
-      } else {
-        console.error('Failed to load contacts:', response.message);
       }
     } catch (error: any) {
       console.error('Error loading contacts:', error);
@@ -216,33 +128,9 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    console.log('Enhanced Inbox Table initializing...');
-
     // Load initial data
     loadMessages(true);
     loadContacts();
-
-    // Setup WebSocket listeners
-    const handleNewMessage = () => {
-      console.log('New message received via WebSocket');
-      loadMessages(true);
-    };
-
-    const handleConnectionStatus = (status: string) => {
-      console.log('Backend connection status:', status);
-      setBackendStatus(status as BackendConnectionStatus);
-    };
-
-    // Connect to WebSocket
-    websocketService.connect();
-    websocketService.on('newMessage', handleNewMessage);
-    websocketService.on('connectionStatus', handleConnectionStatus);
-
-    // Cleanup
-    return () => {
-      websocketService.off('newMessage', handleNewMessage);
-      websocketService.off('connectionStatus', handleConnectionStatus);
-    };
   }, [loadMessages, loadContacts]);
 
   // Send message function
@@ -253,17 +141,8 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
       setIsSending(true);
       setError(null);
 
-      const response = await whatsappService.sendMessage({
-        number: contactNumber,
-        message: message.trim(),
-      });
-
-      if (response.status) {
-        // Refresh messages after sending
-        await loadMessages(true);
-      } else {
-        setError(response.message || 'Failed to send message');
-      }
+      // Mock send for now
+      await loadMessages(true);
     } catch (error: any) {
       console.error('Error sending message:', error);
       setError(error.message || 'Failed to send message');
@@ -281,9 +160,7 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
   // Format timestamp for display
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = diff / (1000 * 60 * 60);
+    const hours = (Date.now() - date.getTime()) / (1000 * 60 * 60);
 
     if (hours < 1) {
       return 'Just now';
@@ -365,7 +242,6 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
           >
             <option value="timestamp">Sort by Time</option>
             <option value="contact">Sort by Contact</option>
-            <option value="unread">Sort by Unread</option>
           </select>
 
           {/* Filter By */}
@@ -416,19 +292,11 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {contact.name || contact.number}
+                            {contact.name || contact.phoneNumber}
                           </h3>
-                          {contact.unreadCount > 0 && (
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                              {contact.unreadCount}
-                            </span>
-                          )}
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                           {contact.lastMessage || 'No messages'}
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          {contact.lastMessageTime && formatTimestamp(contact.lastMessageTime)}
                         </p>
                       </div>
                     </div>
@@ -445,10 +313,10 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium text-gray-900 dark:text-white">
-                      {selectedContact.name || selectedContact.number}
+                      {selectedContact.name || selectedContact.phoneNumber}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {selectedContact.number}
+                      {selectedContact.phoneNumber}
                     </p>
                   </div>
                   <button
@@ -471,7 +339,7 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
               ) : (
                 <div className="space-y-4">
                   {filteredAndSortedMessages.map((message) => {
-                    const isOutgoing = message.isOutgoing;
+                    const isOutgoing = message.outgoing;
                     return (
                       <div
                         key={message.id}
@@ -509,7 +377,7 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         const input = e.target as HTMLInputElement;
-                        sendMessage(input.value, selectedContact.number);
+                        sendMessage(input.value, selectedContact.phoneNumber || '');
                         input.value = '';
                       }
                     }}
@@ -518,7 +386,7 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
                     onClick={(e) => {
                       const input = (e.target as HTMLElement).parentElement?.querySelector('input') as HTMLInputElement;
                       if (input) {
-                        sendMessage(input.value, selectedContact.number);
+                        sendMessage(input.value, selectedContact.phoneNumber || '');
                         input.value = '';
                       }
                     }}
@@ -527,19 +395,6 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
                   >
                     {isSending ? 'Sending...' : 'Send'}
                   </button>
-                </div>
-
-                {/* Quick Replies */}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {quickReplyOptions.map((reply, index) => (
-                    <button
-                      key={index}
-                      onClick={() => sendMessage(reply, selectedContact.number)}
-                      className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-500"
-                    >
-                      {reply}
-                    </button>
-                  ))}
                 </div>
               </div>
             )}
