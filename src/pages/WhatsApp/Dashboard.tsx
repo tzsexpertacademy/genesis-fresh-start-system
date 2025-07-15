@@ -6,6 +6,7 @@ import { getConnectionStatus } from '../../services/whatsappService';
 import PageMeta from '../../components/common/PageMeta';
 
 const Dashboard = () => {
+  console.log('Dashboard component rendering...');
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('disconnected');
 

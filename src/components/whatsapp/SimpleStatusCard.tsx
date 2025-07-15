@@ -53,12 +53,12 @@ const SimpleStatusCard = ({ onStatusChange }: StatusCardProps) => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center">
           <div
-            className={`flex h-10 w-10 sm:h-11.5 sm:w-11.5 items-center justify-center rounded-full mr-3 sm:mr-4 flex-shrink-0 ${
+            className={`flex h-10 w-10 items-center justify-center rounded-full mr-3 sm:mr-4 flex-shrink-0 ${
               status === 'connected'
-                ? 'bg-success-light text-success'
+                ? 'bg-success-50 text-success-600'
                 : status === 'connecting'
-                ? 'bg-warning-light text-warning'
-                : 'bg-danger-light text-danger'
+                ? 'bg-warning-50 text-warning-600'
+                : 'bg-error-50 text-error-600'
             }`}
           >
             <svg
@@ -94,7 +94,7 @@ const SimpleStatusCard = ({ onStatusChange }: StatusCardProps) => {
           <button
             onClick={handleLogout}
             disabled={loading}
-            className="inline-flex items-center justify-center rounded-md border border-danger bg-danger py-2 px-4 text-center font-medium text-white hover:bg-opacity-90 sm:self-center disabled:opacity-70"
+            className="inline-flex items-center justify-center rounded-md border border-error-500 bg-error-500 py-2 px-4 text-center font-medium text-white hover:bg-opacity-90 sm:self-center disabled:opacity-70"
           >
             {loading ? 'Logging out...' : 'Logout'}
           </button>

@@ -119,12 +119,14 @@ const config: Config = {
           950: '#511c10',
         },
         
-        // Semantic aliases for existing components
-        primary: '#465fff', // brand-500
-        danger: '#f04438', // error-500
-        stroke: '#e4e7ec', // gray-200
-        strokedark: '#344054', // gray-700
-        boxdark: '#1a2231', // gray-dark
+        // Semantic aliases
+        primary: '#465fff',
+        secondary: '#12b76a',
+        danger: '#f04438',
+        info: '#0ba5ec',
+        stroke: '#e4e7ec',
+        strokedark: '#344054',
+        boxdark: '#1a2231',
       },
       boxShadow: {
         default: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
