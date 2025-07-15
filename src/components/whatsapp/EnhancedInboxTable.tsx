@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Contact, InboxMessage, BackendConnectionStatus, WhatsAppConnectionStatus } from '../../types/whatsapp';
+import { Contact, InboxMessage, BackendConnectionStatus } from '../../types/whatsapp';
 
 // Define view mode enum
 type InboxViewMode = 'contacts' | 'messages' | 'both';
@@ -29,7 +29,7 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
   const [isSending, setIsSending] = useState<boolean>(false);
 
   // Connection status
-  const [, setBackendStatus] = useState<BackendConnectionStatus>('unknown');
+  const [] = useState<BackendConnectionStatus>('unknown');
 
   // Refs for optimization
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -296,7 +296,7 @@ const EnhancedInboxTable: React.FC<Props> = ({ className = '' }) => {
                           </h3>
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                          {contact.lastMessage || 'No messages'}
+                          {contact.lastMessage?.message || 'No messages'}
                         </p>
                       </div>
                     </div>

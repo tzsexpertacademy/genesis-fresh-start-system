@@ -13,9 +13,13 @@ export interface InboxMessage {
 
 // Contact with messages (for inbox)
 export interface Contact {
+  id: string;
+  name: string;
+  number: string;
   phoneNumber: string;
   displayName: string;
   lastMessage: InboxMessage;
+  lastMessageTime: string;
   unreadCount: number;
   messages: InboxMessage[];
 }
