@@ -1,5 +1,5 @@
 import PageMeta from '../../components/common/PageMeta';
-import { StatusCard } from '../../components/whatsapp/StatusCard';
+import StatusCard from '../../components/whatsapp/StatusCard';
 
 const Dashboard = () => {
   return (

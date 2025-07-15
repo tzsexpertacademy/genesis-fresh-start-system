@@ -1,54 +1,61 @@
 import { InboxMessage } from '../types/whatsapp';
 
-// Comprehensive WhatsApp service with all needed exports
+// WhatsApp service exports
+export const getConnectionStatus = async (): Promise<string> => {
+  return 'disconnected';
+};
+
+export const logout = async (): Promise<boolean> => {
+  return true;
+};
+
+export const getInboxMessages = async (): Promise<InboxMessage[]> => {
+  return [];
+};
+
+export const sendMessage = async (number: string, message: string): Promise<boolean> => {
+  console.log(`Sending message to ${number}: ${message}`);
+  return true;
+};
+
+export const sendTextMessage = async (number: string, message: string): Promise<boolean> => {
+  return sendMessage(number, message);
+};
+
+export const sendMediaMessage = async (number: string, media: File, caption?: string): Promise<boolean> => {
+  console.log(`Sending media to ${number}:`, media.name, caption);
+  return true;
+};
+
+export const getQRCode = async (): Promise<string> => {
+  return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+};
+
+export const getConfig = async (): Promise<any> => {
+  return {};
+};
+
+export const updateConfig = async (config: any): Promise<boolean> => {
+  console.log('Updating config:', config);
+  return true;
+};
+
+export const getLogs = async (): Promise<string[]> => {
+  return ['App initialized', 'WhatsApp service started'];
+};
+
+// Backward compatibility
 export const whatsappService = {
-  // Connection methods
-  getConnectionStatus: async (): Promise<string> => {
-    return 'disconnected';
-  },
-
-  logout: async (): Promise<boolean> => {
-    return true;
-  },
-
-  // Message methods
-  getInboxMessages: async (): Promise<InboxMessage[]> => {
-    return [];
-  },
-  
-  sendMessage: async (number: string, message: string): Promise<boolean> => {
-    console.log(`Sending message to ${number}: ${message}`);
-    return true;
-  },
-
-  sendTextMessage: async (number: string, message: string): Promise<boolean> => {
-    return whatsappService.sendMessage(number, message);
-  },
-
-  sendMediaMessage: async (number: string, media: File, caption?: string): Promise<boolean> => {
-    console.log(`Sending media to ${number}:`, media.name, caption);
-    return true;
-  },
-
-  // QR Code methods
-  getQRCode: async (): Promise<string> => {
-    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-  },
-
-  // Config methods
-  getConfig: async (): Promise<any> => {
-    return {};
-  },
-
-  updateConfig: async (config: any): Promise<boolean> => {
-    console.log('Updating config:', config);
-    return true;
-  },
-
-  // Logs methods
-  getLogs: async (): Promise<string[]> => {
-    return ['App initialized', 'WhatsApp service started'];
-  }
+  getConnectionStatus,
+  logout,
+  getInboxMessages,
+  sendMessage,
+  sendTextMessage,
+  sendMediaMessage,
+  getQRCode,
+  getConfig,
+  updateConfig,
+  getLogs
 };
 
 // API request helper
