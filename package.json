@@ -30,6 +30,7 @@
     "flatpickr": "^4.6.13",
     "formik": "^2.4.5",
     "groq-sdk": "^0.21.0",
+    "lovable-tagger": "^1.1.8",
     "node-fetch": "^3.3.2",
     "react": "19.1.0",
     "react-apexcharts": "^1.7.0",
