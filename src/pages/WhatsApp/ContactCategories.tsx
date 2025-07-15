@@ -23,7 +23,7 @@ const ContactCategories = () => {
     try {
       const response = await getContactCategories();
       if (response.status) {
-        setCategories(response.data.categories);
+        setCategories(Array.isArray(response.data) ? response.data : []);
       } else {
         console.error('API returned error:', response);
         setError('Failed to load categories: ' + (response.message || 'Unknown error'));
@@ -45,8 +45,8 @@ const ContactCategories = () => {
     try {
       // First check if there are contacts in this category
       const contactsResponse = await getContactsInCategory(id);
-      if (contactsResponse.status && contactsResponse.data.contacts.length > 0) {
-        if (!window.confirm(`This category has ${contactsResponse.data.contacts.length} contacts. Deleting it will remove the category from these contacts. Continue?`)) {
+      if (contactsResponse.status && Array.isArray(contactsResponse.data) && contactsResponse.data.length > 0) {
+        if (!window.confirm(`This category has ${contactsResponse.data.length} contacts. Deleting it will remove the category from these contacts. Continue?`)) {
           return;
         }
       } else if (!window.confirm('Are you sure you want to delete this category?')) {

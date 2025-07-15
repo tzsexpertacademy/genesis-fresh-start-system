@@ -5,7 +5,7 @@ import { WhatsAppContact, WhatsAppContactCategory } from '../../types/whatsapp';
 import { getContacts, deleteContact, formatPhoneNumber } from '../../services/contactService';
 import { getContactCategories } from '../../services/contactService';
 import ContactForm from '../../components/whatsapp/ContactForm';
-import ImportContactsForm from '../../components/whatsapp/ImportContactsForm';
+// import ImportContactsForm from '../../components/whatsapp/ImportContactsForm'; // Removed for now
 
 const Contacts = () => {
   const [contacts, setContacts] = useState<WhatsAppContact[]>([]);
@@ -31,15 +31,15 @@ const Contacts = () => {
       let fetchedContacts: WhatsAppContact[] = [];
       let fetchedCategories: WhatsAppContactCategory[] = [];
 
-      if (contactsResponse.status && contactsResponse.data?.contacts) {
-        fetchedContacts = contactsResponse.data.contacts;
+      if (contactsResponse.status && contactsResponse.data) {
+        fetchedContacts = Array.isArray(contactsResponse.data) ? contactsResponse.data : [];
       } else if (!contactsResponse.status) {
         console.error('Failed to load contacts:', contactsResponse.message);
         setError(prev => prev ? `${prev}, Failed to load contacts` : 'Failed to load contacts');
       }
       
-      if (categoriesResponse.status && categoriesResponse.data?.categories) {
-        fetchedCategories = categoriesResponse.data.categories;
+      if (categoriesResponse.status && categoriesResponse.data) {
+        fetchedCategories = Array.isArray(categoriesResponse.data) ? categoriesResponse.data : [];
         setAllCategories(fetchedCategories); // Store all available categories
       } else if (!categoriesResponse.status) {
         console.error('Failed to load categories:', categoriesResponse.message);
@@ -354,12 +354,20 @@ const Contacts = () => {
           />
         )}
 
-        {/* Import Contacts Form Modal */}
+        {/* Import functionality disabled for now */}
         {showImportForm && (
-          <ImportContactsForm
-            onClose={() => setShowImportForm(false)}
-            onSuccess={handleFormSuccess}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-6">
+              <h3 className="text-lg font-semibold mb-4">Import Contacts</h3>
+              <p className="text-sm text-gray-600 mb-4">Import functionality will be available soon.</p>
+              <button
+                onClick={() => setShowImportForm(false)}
+                className="rounded bg-primary py-2 px-4 text-white hover:bg-opacity-90"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </>
