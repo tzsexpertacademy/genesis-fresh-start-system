@@ -1,11 +1,12 @@
 {
-  "name": "tailadmin-react",
+  "name": "whatsapp-gateway",
   "private": true,
-  "version": "2.0.2",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
   },
